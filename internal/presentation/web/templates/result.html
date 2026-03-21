@@ -10,46 +10,56 @@
 </div>
 {{else}}
 
-<div class="card">
-    <h3>📊 Overview</h3>
-    <div class="info-grid">
-        <div class="info-item">
-            <span class="label">URL:</span>
-            <span class="value"><a href="{{.Result.URL}}" target="_blank">{{.Result.URL}}</a></span>
+<div class="overview-headings-grid">
+    <div class="card">
+        <h3>📊 Overview</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="label">URL:</span>
+                <span class="value"><a href="{{.Result.URL}}" target="_blank">{{.Result.URL}}</a></span>
+            </div>
+            <div class="info-item">
+                <span class="label">HTML Version:</span>
+                <span class="value">{{.Result.HTMLVersion}}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Page Title:</span>
+                <span class="value">{{if .Result.Title}}{{.Result.Title}}{{else}}<em>(no title)</em>{{end}}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Analyzed:</span>
+                <span class="value">{{.Result.AnalyzedAt.Format "2006-01-02 15:04:05"}}</span>
+            </div>
+            {{if .Result.CacheHit}}
+            <div class="info-item">
+                <span class="label">Cache:</span>
+                <span class="value badge badge-success">Hit ✓</span>
+            </div>
+            {{end}}
         </div>
-        <div class="info-item">
-            <span class="label">HTML Version:</span>
-            <span class="value">{{.Result.HTMLVersion}}</span>
+    </div>
+
+    <div class="card">
+        <h3>📑 Headings</h3>
+        <div class="headings-compact">
+            <div class="heading-row"><strong>H1:</strong> {{.Result.Headings.H1}} <strong>H2:</strong> {{.Result.Headings.H2}} <strong>H3:</strong> {{.Result.Headings.H3}}</div>
+            <div class="heading-row"><strong>H4:</strong> {{.Result.Headings.H4}} <strong>H5:</strong> {{.Result.Headings.H5}} <strong>H6:</strong> {{.Result.Headings.H6}}</div>
+            <div class="heading-total"><strong>Total:</strong> {{.Result.Headings.Total}}</div>
         </div>
-        <div class="info-item">
-            <span class="label">Page Title:</span>
-            <span class="value">{{if .Result.Title}}{{.Result.Title}}{{else}}<em>(no title)</em>{{end}}</span>
-        </div>
-        <div class="info-item">
-            <span class="label">Analyzed:</span>
-            <span class="value">{{.Result.AnalyzedAt.Format "2006-01-02 15:04:05"}}</span>
-        </div>
-        {{if .Result.CacheHit}}
-        <div class="info-item">
-            <span class="label">Cache:</span>
-            <span class="value badge badge-success">Hit ✓</span>
-        </div>
-        {{end}}
     </div>
 </div>
 
 <div class="card">
-    <h3>📑 Headings</h3>
-    <div class="headings-grid">
-        <div class="heading-item"><strong>H1:</strong> {{.Result.Headings.H1}}</div>
-        <div class="heading-item"><strong>H2:</strong> {{.Result.Headings.H2}}</div>
-        <div class="heading-item"><strong>H3:</strong> {{.Result.Headings.H3}}</div>
-        <div class="heading-item"><strong>H4:</strong> {{.Result.Headings.H4}}</div>
-        <div class="heading-item"><strong>H5:</strong> {{.Result.Headings.H5}}</div>
-        <div class="heading-item"><strong>H6:</strong> {{.Result.Headings.H6}}</div>
-    </div>
-    <div class="total-headings">
-        <strong>Total Headings:</strong> {{.Result.Headings.Total}}
+    <h3>🔒 Login Form</h3>
+    <div class="info-item">
+        <span class="label">Has Login Form:</span>
+        <span class="value">
+            {{if .Result.HasLoginForm}}
+            <span class="badge badge-success">Yes ✓</span>
+            {{else}}
+            <span class="badge badge-secondary">No</span>
+            {{end}}
+        </span>
     </div>
 </div>
 
@@ -136,20 +146,6 @@
         {{end}}
     </div>
     {{end}}
-</div>
-
-<div class="card">
-    <h3>🔒 Login Form</h3>
-    <div class="info-item">
-        <span class="label">Has Login Form:</span>
-        <span class="value">
-            {{if .Result.HasLoginForm}}
-            <span class="badge badge-success">Yes ✓</span>
-            {{else}}
-            <span class="badge badge-secondary">No</span>
-            {{end}}
-        </span>
-    </div>
 </div>
 
 <div class="card">

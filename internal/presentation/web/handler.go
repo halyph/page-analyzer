@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/halyph/page-analyzer/internal/domain"
 )
@@ -82,7 +83,7 @@ func (h *Handler) HandleAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := r.FormValue("url")
+	url := strings.TrimSpace(r.FormValue("url"))
 	if url == "" {
 		h.renderError(w, "URL is required", nil)
 		return

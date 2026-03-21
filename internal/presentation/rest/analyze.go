@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/halyph/page-analyzer/internal/domain"
 )
@@ -15,6 +16,9 @@ func (h *Handler) HandleAnalyze(w http.ResponseWriter, r *http.Request) {
 		h.respondError(w, http.StatusBadRequest, "invalid request body", err)
 		return
 	}
+
+	// Trim whitespace from URL
+	req.URL = strings.TrimSpace(req.URL)
 
 	// Validate URL
 	if req.URL == "" {

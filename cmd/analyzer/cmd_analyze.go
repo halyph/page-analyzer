@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
@@ -52,7 +53,7 @@ func runAnalyze(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("URL argument required")
 	}
-	url := c.Args().First()
+	url := strings.TrimSpace(c.Args().First())
 
 	cfg := config.Load()
 
