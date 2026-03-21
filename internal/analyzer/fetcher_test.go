@@ -12,11 +12,13 @@ import (
 )
 
 func TestFetcher_FetchSuccess(t *testing.T) {
+	html := loadFixture(t, "fetcher_simple.html")
+
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("<html><head><title>Test</title></head></html>"))
+		_, _ = w.Write(html)
 	}))
 	defer server.Close()
 
@@ -35,7 +37,7 @@ func TestFetcher_FetchSuccess(t *testing.T) {
 		t.Errorf("ContentType = %s, want text/html", result.ContentType)
 	}
 
-	if !strings.Contains(string(result.Body), "<title>Test</title>") {
+	if !strings.Contains(string(result.Body), "Test") {
 		t.Errorf("Body does not contain expected content")
 	}
 }

@@ -11,22 +11,12 @@ import (
 )
 
 func TestService_AnalyzeSuccess(t *testing.T) {
-	html := `<!DOCTYPE html>
-<html>
-<head><title>Example Domain</title></head>
-<body>
-	<h1>Example Domain</h1>
-	<h2>Section 1</h2>
-	<p>This domain is for use in illustrative examples.</p>
-	<a href="/more">More information...</a>
-	<a href="https://iana.org">IANA</a>
-</body>
-</html>`
+	html := loadFixture(t, "simple.html")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(html))
+		_, _ = w.Write(html)
 	}))
 	defer server.Close()
 
@@ -82,21 +72,10 @@ func TestService_AnalyzeSuccess(t *testing.T) {
 }
 
 func TestService_AnalyzeWithLoginForm(t *testing.T) {
-	html := `<!DOCTYPE html>
-<html>
-<head><title>Login Page</title></head>
-<body>
-	<h1>Login</h1>
-	<form action="/login" method="post">
-		<input type="text" name="username" />
-		<input type="password" name="password" />
-		<button type="submit">Login</button>
-	</form>
-</body>
-</html>`
+	html := loadFixture(t, "login_form.html")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(html))
+		_, _ = w.Write(html)
 	}))
 	defer server.Close()
 
@@ -117,35 +96,10 @@ func TestService_AnalyzeWithLoginForm(t *testing.T) {
 }
 
 func TestService_AnalyzeComplexPage(t *testing.T) {
-	html := `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">
-<html>
-<head><title>Complex Page</title></head>
-<body>
-	<h1>Main</h1>
-	<h2>Section 1</h2>
-	<h3>Subsection 1.1</h3>
-	<h3>Subsection 1.2</h3>
-	<h2>Section 2</h2>
-	<h3>Subsection 2.1</h3>
-	<h4>Details</h4>
-	<h5>Fine print</h5>
-	<h6>Very fine print</h6>
-
-	<a href="/page1">Page 1</a>
-	<a href="/page2">Page 2</a>
-	<a href="/page3">Page 3</a>
-	<a href="https://external.com">External</a>
-	<a href="https://another.com">Another</a>
-
-	<form>
-		<input type="email" name="email" />
-		<input type="password" name="pwd" />
-	</form>
-</body>
-</html>`
+	html := loadFixture(t, "complex.html")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(html))
+		_, _ = w.Write(html)
 	}))
 	defer server.Close()
 
@@ -191,7 +145,7 @@ func TestService_AnalyzeComplexPage(t *testing.T) {
 }
 
 func TestService_AnalyzeRedirect(t *testing.T) {
-	finalHTML := `<html><head><title>Final Page</title></head><body>Final content</body></html>`
+	finalHTML := loadFixture(t, "redirect_final.html")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/start" {
@@ -199,7 +153,7 @@ func TestService_AnalyzeRedirect(t *testing.T) {
 			return
 		}
 		if r.URL.Path == "/final" {
-			_, _ = w.Write([]byte(finalHTML))
+			_, _ = w.Write(finalHTML)
 			return
 		}
 		http.NotFound(w, r)
@@ -285,10 +239,10 @@ func TestService_AnalyzeEmptyURL(t *testing.T) {
 }
 
 func TestService_AnalyzeMalformedHTML(t *testing.T) {
-	html := `<html><head><title>Broken</title></head><h1>Unclosed<p>Tags everywhere`
+	html := loadFixture(t, "malformed.html")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(html))
+		_, _ = w.Write(html)
 	}))
 	defer server.Close()
 

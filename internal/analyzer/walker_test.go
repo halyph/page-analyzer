@@ -9,14 +9,7 @@ import (
 )
 
 func TestWalker_Simple(t *testing.T) {
-	html := `<!DOCTYPE html>
-<html>
-<head><title>Test Page</title></head>
-<body>
-	<h1>Main Title</h1>
-	<p>Content here</p>
-</body>
-</html>`
+	html := loadFixture(t, "walker_simple.html")
 
 	walker := NewWalker(DefaultWalkerConfig())
 	result := domain.NewAnalysisResult("https://example.com")
@@ -28,7 +21,7 @@ func TestWalker_Simple(t *testing.T) {
 		&collectors.HeadingsCollector{},
 	}
 
-	err := walker.Walk([]byte(html), colls, result)
+	err := walker.Walk(html, colls, result)
 	if err != nil {
 		t.Fatalf("Walk() error = %v", err)
 	}
@@ -48,22 +41,7 @@ func TestWalker_Simple(t *testing.T) {
 }
 
 func TestWalker_CompleteAnalysis(t *testing.T) {
-	html := `<!DOCTYPE html>
-<html>
-<head><title>Complete Test</title></head>
-<body>
-	<h1>Title</h1>
-	<h2>Section 1</h2>
-	<h2>Section 2</h2>
-	<h3>Subsection</h3>
-	<a href="https://example.com/page1">Internal</a>
-	<a href="https://other.com">External</a>
-	<form>
-		<input type="text" name="username">
-		<input type="password" name="password">
-	</form>
-</body>
-</html>`
+	html := loadFixture(t, "walker_complete.html")
 
 	walker := NewWalker(DefaultWalkerConfig())
 	result := domain.NewAnalysisResult("https://example.com")
@@ -78,7 +56,7 @@ func TestWalker_CompleteAnalysis(t *testing.T) {
 		&collectors.LoginFormCollector{},
 	}
 
-	err := walker.Walk([]byte(html), colls, result)
+	err := walker.Walk(html, colls, result)
 	if err != nil {
 		t.Fatalf("Walk() error = %v", err)
 	}
@@ -121,7 +99,7 @@ func TestWalker_EmptyBody(t *testing.T) {
 
 func TestWalker_MalformedHTML(t *testing.T) {
 	// Malformed HTML should still be parseable (HTML parser is forgiving)
-	html := `<html><head><title>Test</title></head><h1>Unclosed tags`
+	html := loadFixture(t, "walker_malformed.html")
 
 	walker := NewWalker(DefaultWalkerConfig())
 	result := domain.NewAnalysisResult("https://example.com")
@@ -131,7 +109,7 @@ func TestWalker_MalformedHTML(t *testing.T) {
 		&collectors.HeadingsCollector{},
 	}
 
-	err := walker.Walk([]byte(html), colls, result)
+	err := walker.Walk(html, colls, result)
 	if err != nil {
 		t.Fatalf("Walk() error = %v (parser should be forgiving)", err)
 	}
