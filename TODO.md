@@ -5,6 +5,28 @@
 
 ---
 
+## 🎯 Architecture Decision: OpenTelemetry Only
+
+**Decision:** Use OpenTelemetry for ALL telemetry (metrics + tracing), not Prometheus client directly.
+
+**Rationale:**
+- ✅ **Unified API** - Single instrumentation library for metrics and traces
+- ✅ **Modern standard** - OTEL is the CNCF standard for observability
+- ✅ **Vendor neutral** - Can export to any backend (Prometheus, Tempo, Jaeger, etc.)
+- ✅ **Future-proof** - Industry is moving towards OTEL
+- ✅ **Consistent** - Same patterns for metrics and tracing
+
+**Architecture:**
+```
+App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
+                                ↓
+                            Grafana (visualization)
+```
+
+**Note:** We'll still expose a `/metrics` endpoint for Prometheus using the OTEL Prometheus exporter bridge.
+
+---
+
 ## Legend
 - ✅ **Done** - Fully implemented and tested
 - 🚧 **In Progress** - Partially implemented
@@ -108,26 +130,46 @@
 
 ## Phase 10: Observability ❌ TODO (2-3 hours)
 
-### Metrics (Prometheus)
-- ❌ `internal/observability/metrics.go` - Prometheus metrics
-  - Request count by endpoint, status
-  - Request duration histogram
-  - Active requests gauge
-  - Cache hit/miss counters
-  - Link check queue size
-  - Analysis duration histogram
-- ❌ `internal/server/middleware.go` - Metrics middleware
-- ❌ GET /metrics endpoint for Prometheus scraping
+**Architecture Decision:** Use ONLY OpenTelemetry for both metrics and tracing (unified telemetry).
+
+### OpenTelemetry Setup
+- ❌ `internal/observability/otel.go` - OTEL initialization
+  - Initialize MeterProvider for metrics
+  - Initialize TracerProvider for tracing
+  - Configure OTLP exporters (HTTP)
+  - Resource detection (service.name, service.version, etc.)
+  - Graceful shutdown handlers
+  - Error handling and fallback
+
+### Metrics (OpenTelemetry Metrics API)
+- ❌ `internal/observability/metrics.go` - OTEL metrics instrumentation
+  - http.server.request.count (Counter) - by endpoint, status
+  - http.server.request.duration (Histogram) - by endpoint
+  - http.server.active_requests (UpDownCounter)
+  - analyzer.cache.hits (Counter) - by layer (L1/L2)
+  - analyzer.cache.misses (Counter) - by layer
+  - analyzer.links.checked (Counter)
+  - analyzer.links.queue_size (ObservableGauge)
+  - analyzer.worker_pool.utilization (ObservableGauge)
+  - analyzer.analysis.duration (Histogram)
+- ❌ `internal/server/middleware.go` - Metrics middleware using OTEL
+- ❌ GET /metrics endpoint (OTEL Prometheus exporter bridge)
 - ❌ Metrics tests
 
-### Tracing (OpenTelemetry)
-- ❌ `internal/observability/tracing.go` - OTEL setup
-  - Initialize tracer provider
-  - HTTP instrumentation
-  - Custom spans for fetch, parse, analyze
-  - Export to OTLP endpoint (Tempo)
-- ❌ Add go.opentelemetry.io/otel dependencies
-- ❌ Trace context propagation
+### Tracing (OpenTelemetry Tracing API)
+- ❌ `internal/observability/tracing.go` - OTEL tracing helpers
+  - Helper functions for common span patterns
+  - Span attribute constants (semantic conventions)
+  - Context propagation utilities
+- ❌ HTTP instrumentation with otelhttp.NewHandler
+- ❌ Custom spans for:
+  - HTTP fetch (external request to target URL)
+  - HTML parsing/tokenization
+  - Individual collector execution
+  - Link checking job submission
+  - Link checking execution
+  - Cache read/write operations
+- ❌ Trace context propagation across goroutines
 - ❌ Tracing tests
 
 ### Enhanced Logging
@@ -148,13 +190,17 @@
 - ❌ GET /api/health/ready - Readiness probe (detailed)
 - ❌ Health check tests
 
-### Dependencies
+### Dependencies (OpenTelemetry Only)
 - ❌ Add to go.mod:
-  - `github.com/prometheus/client_golang`
-  - `go.opentelemetry.io/otel`
-  - `go.opentelemetry.io/otel/exporters/otlp/otlptrace`
-  - `go.opentelemetry.io/otel/sdk/trace`
-  - `go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp`
+  - `go.opentelemetry.io/otel` - Core OTEL API
+  - `go.opentelemetry.io/otel/sdk/metric` - Metrics SDK
+  - `go.opentelemetry.io/otel/sdk/trace` - Tracing SDK
+  - `go.opentelemetry.io/otel/sdk/resource` - Resource detection
+  - `go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp` - Metrics export via HTTP
+  - `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp` - Traces export via HTTP
+  - `go.opentelemetry.io/otel/exporters/prometheus` - Prometheus bridge for /metrics endpoint
+  - `go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp` - HTTP instrumentation
+  - `github.com/prometheus/client_golang` - ONLY for /metrics HTTP handler (optional)
 
 ### Integration
 - ❌ Update cmd/serve.go to initialize observability
@@ -171,19 +217,24 @@
 - ✅ Basic `docker-compose.yml` - analyzer + redis services
 - ❌ `.dockerignore` - Optimize build context
 
-### Observability Stack ❌
-- ❌ `deployments/tempo.yaml` - Tempo (tracing) configuration
-- ❌ `deployments/prometheus.yml` - Prometheus scrape config
+### Observability Stack ❌ (OpenTelemetry-based)
+- ❌ `deployments/otel-collector-config.yaml` - OTEL Collector configuration
+  - Receivers: OTLP (HTTP + gRPC)
+  - Processors: batch, memory_limiter
+  - Exporters: prometheus, tempo, loki (optional)
+- ❌ `deployments/tempo.yaml` - Tempo (tracing backend) configuration
+- ❌ `deployments/prometheus.yml` - Prometheus scrape config (scrapes OTEL Collector)
 - ❌ `deployments/grafana/datasources/datasources.yml` - Prometheus + Tempo
 - ❌ `deployments/grafana/dashboards/dashboard.yml` - Dashboard provisioning
 - ❌ `deployments/grafana/dashboards/analyzer.json` - Custom dashboard
 - ❌ Update docker-compose.yml with full stack:
-  - analyzer (app)
+  - analyzer (app) - exports to OTEL Collector
   - redis (cache)
-  - prometheus (metrics)
-  - tempo (tracing)
+  - otel-collector (telemetry aggregation)
+  - prometheus (metrics storage) - scrapes OTEL Collector
+  - tempo (tracing storage)
   - grafana (visualization)
-  - loki (optional - logs)
+  - loki (optional - logs aggregation)
 
 ### Docker Testing
 - ❌ Test full stack startup
