@@ -524,3 +524,26 @@ footer a:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* Error/404 Page */
+.error-page {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.error-page h2 {
+    color: var(--error);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.error-page p {
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+}
+
+.error-page .card {
+    display: inline-block;
+    padding: 1rem;
+}

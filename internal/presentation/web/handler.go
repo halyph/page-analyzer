@@ -179,3 +179,15 @@ func (h *Handler) renderError(w http.ResponseWriter, message string, err error) 
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
+
+// Handle404 renders the 404 page
+func (h *Handler) Handle404(w http.ResponseWriter, r *http.Request) {
+	data := h.baseData("404 Not Found")
+	data["Show404"] = true
+
+	w.WriteHeader(http.StatusNotFound)
+	if err := h.tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+		h.logger.Error("failed to render 404 template", "error", err)
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+	}
+}

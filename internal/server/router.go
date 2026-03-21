@@ -37,5 +37,8 @@ func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, logger *slog.
 		r.Get("/jobs/{id}", restHandler.HandleGetJob)
 	})
 
+	// 404 handler
+	r.NotFound(webHandler.Handle404)
+
 	return r
 }

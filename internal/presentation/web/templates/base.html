@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - Page Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -17,6 +18,8 @@
     <main class="container">
         {{if .ShowIndex}}
             {{template "index-content" .}}
+        {{else if .Show404}}
+            {{template "404-content" .}}
         {{else if .Result}}
             {{template "result-content" .}}
         {{else if .Error}}
