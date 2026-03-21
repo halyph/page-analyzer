@@ -15,8 +15,9 @@ import (
 func newAnalyzeCommand() *cli.Command {
 	cfg := config.Load()
 	return &cli.Command{
-		Name:  "analyze",
-		Usage: "Analyze a webpage",
+		Name:    "analyze",
+		Aliases: []string{"a"},
+		Usage:   "Analyze a webpage",
 		UsageText: `analyzer analyze [options] URL
 
 Examples:

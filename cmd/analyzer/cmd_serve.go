@@ -19,8 +19,9 @@ import (
 
 func newServeCommand() *cli.Command {
 	return &cli.Command{
-		Name:  "serve",
-		Usage: "Start the HTTP server",
+		Name:    "serve",
+		Aliases: []string{"s"},
+		Usage:   "Start the HTTP server",
 		UsageText: `analyzer serve [options]
 
 The server provides:
