@@ -22,6 +22,7 @@ type LinkCheckWorkerPool struct {
 	client      *http.Client
 	timeout     time.Duration
 	maxAge      time.Duration
+	userAgent   string
 	stopCleanup chan struct{}
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -77,6 +78,7 @@ func NewLinkCheckWorkerPool(config LinkCheckConfig) *LinkCheckWorkerPool {
 		jobs:        make(chan *domain.LinkCheckJob, config.QueueSize),
 		timeout:     config.Timeout,
 		maxAge:      config.JobMaxAge,
+		userAgent:   config.UserAgent,
 		stopCleanup: make(chan struct{}),
 		ctx:         ctx,
 		cancel:      cancel,
@@ -188,13 +190,37 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 }
 
 // checkLink performs an HTTP HEAD request to check link accessibility
+// Falls back to GET if HEAD is not allowed (405) or forbidden (403)
 func (p *LinkCheckWorkerPool) checkLink(ctx context.Context, urlStr string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, urlStr, nil)
+	// Try HEAD first (faster, less bandwidth)
+	err := p.doRequest(ctx, http.MethodHead, urlStr)
+	if err == nil {
+		return nil
+	}
+
+	// If HEAD fails with 403, 405, or 406, try GET as fallback
+	if httpErr, ok := err.(*httpError); ok {
+		if httpErr.StatusCode == 403 || httpErr.StatusCode == 405 || httpErr.StatusCode == 406 {
+			return p.doRequest(ctx, http.MethodGet, urlStr)
+		}
+	}
+
+	return err
+}
+
+// doRequest performs the actual HTTP request
+func (p *LinkCheckWorkerPool) doRequest(ctx context.Context, method, urlStr string) error {
+	req, err := http.NewRequestWithContext(ctx, method, urlStr, nil)
 	if err != nil {
 		return fmt.Errorf("invalid_url: %w", err)
 	}
 
-	req.Header.Set("User-Agent", "PageAnalyzer/1.0")
+	// Use browser-like headers to avoid bot detection
+	req.Header.Set("User-Agent", p.userAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Accept-Encoding", "gzip, deflate")
+	req.Header.Set("Connection", "keep-alive")
 
 	resp, err := p.client.Do(req)
 	if err != nil {
