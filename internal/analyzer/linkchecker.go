@@ -16,6 +16,24 @@ import (
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
+// LinkChecker defines the interface for link checking implementations
+type LinkChecker interface {
+	// Submit submits a batch of URLs for checking
+	Submit(urls []string, baseURL string) string
+
+	// GetJob retrieves a job by ID
+	GetJob(jobID string) (*domain.LinkCheckJob, bool)
+
+	// WaitForJob waits for a job to complete with timeout
+	WaitForJob(jobID string, timeout time.Duration) (*domain.LinkCheckJob, error)
+
+	// Start starts the link checker (if not already started)
+	Start()
+
+	// Stop stops the link checker
+	Stop()
+}
+
 // Realistic browser user agents to avoid bot detection
 var browserUserAgents = []string{
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

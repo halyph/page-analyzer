@@ -15,21 +15,21 @@ import (
 type Service struct {
 	fetcher     *Fetcher
 	walker      *Walker
-	linkChecker *LinkCheckWorkerPool // Optional link checker
-	cache       cache.Cache          // Optional cache
-	cacheTTL    time.Duration        // Cache TTL for HTML results
-	logger      *slog.Logger         // Optional logger (nil = no logging)
+	linkChecker LinkChecker      // Optional link checker
+	cache       cache.Cache      // Optional cache
+	cacheTTL    time.Duration    // Cache TTL for HTML results
+	logger      *slog.Logger     // Optional logger (nil = no logging)
 }
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
 	Fetcher         config.FetchingConfig
 	Walker          config.ProcessingConfig
-	LinkChecker     *LinkCheckConfig     // Optional: config to create new link checker
-	LinkCheckerPool *LinkCheckWorkerPool // Optional: use existing link checker
-	Cache           cache.Cache          // Optional: nil means no caching
-	CacheTTL        time.Duration        // Cache TTL (default: 1 hour)
-	Logger          *slog.Logger         // Optional: logger (nil = no logging)
+	LinkChecker     *LinkCheckConfig // Optional: config to create new link checker
+	LinkCheckerPool LinkChecker      // Optional: use existing link checker
+	Cache           cache.Cache      // Optional: nil means no caching
+	CacheTTL        time.Duration    // Cache TTL (default: 1 hour)
+	Logger          *slog.Logger     // Optional: logger (nil = no logging)
 }
 
 // NewService creates a new analyzer service
