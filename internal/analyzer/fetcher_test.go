@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 func TestFetcher_FetchSuccess(t *testing.T) {

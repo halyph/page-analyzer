@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oivasiv/page-analyzer/internal/analyzer/collectors"
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 func TestWalker_Simple(t *testing.T) {

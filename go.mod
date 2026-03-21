@@ -1,4 +1,4 @@
-module github.com/oivasiv/page-analyzer
+module github.com/halyph/page-analyzer
 
 go 1.25.4
 

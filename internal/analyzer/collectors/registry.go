@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 // Registry manages collector factories

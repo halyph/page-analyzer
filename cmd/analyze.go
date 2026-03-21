@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oivasiv/page-analyzer/internal/analyzer"
-	"github.com/oivasiv/page-analyzer/internal/domain"
-	"github.com/oivasiv/page-analyzer/internal/presentation/cli"
+	"github.com/halyph/page-analyzer/internal/analyzer"
+	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/presentation/cli"
 	"github.com/spf13/cobra"
 )
 

@@ -19,7 +19,7 @@ var rootCmd = &cobra.Command{
 	Long: `Page Analyzer is a command-line tool for analyzing webpages.
 It extracts HTML version, title, headings, links, and detects login forms.
 
-Complete documentation is available at https://github.com/oivasiv/page-analyzer`,
+Complete documentation is available at https://github.com/halyph/page-analyzer`,
 	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date),
 }
 

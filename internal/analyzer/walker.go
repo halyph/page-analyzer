@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/domain"
 	"golang.org/x/net/html"
 )
 

@@ -3,8 +3,8 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/oivasiv/page-analyzer/internal/analyzer/collectors"
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 func TestRegistry_AllCollectorsRegistered(t *testing.T) {

@@ -3,7 +3,7 @@ package cli
 import (
 	"encoding/json"
 
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 // FormatJSON formats the analysis result as pretty-printed JSON

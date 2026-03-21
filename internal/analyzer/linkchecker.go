@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 // LinkCheckWorkerPool manages concurrent link checking with bounded resources

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/oivasiv/page-analyzer/internal/analyzer/collectors"
-	"github.com/oivasiv/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
+	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 // Service is the main analyzer that orchestrates fetching, parsing, and collecting
