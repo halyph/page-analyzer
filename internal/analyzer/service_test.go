@@ -26,7 +26,7 @@ func TestService_AnalyzeSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -96,7 +96,7 @@ func TestService_AnalyzeWithLoginForm(t *testing.T) {
 </html>`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -145,7 +145,7 @@ func TestService_AnalyzeComplexPage(t *testing.T) {
 </html>`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -199,7 +199,7 @@ func TestService_AnalyzeRedirect(t *testing.T) {
 			return
 		}
 		if r.URL.Path == "/final" {
-			w.Write([]byte(finalHTML))
+			_, _ = w.Write([]byte(finalHTML))
 			return
 		}
 		http.NotFound(w, r)
@@ -288,7 +288,7 @@ func TestService_AnalyzeMalformedHTML(t *testing.T) {
 	html := `<html><head><title>Broken</title></head><h1>Unclosed<p>Tags everywhere`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -318,7 +318,7 @@ func TestService_AnalyzeEmptyPage(t *testing.T) {
 	html := ``
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -343,7 +343,7 @@ func TestService_AnalyzeWithMaxLinks(t *testing.T) {
 	html += `</body></html>`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(html))
+		_, _ = w.Write([]byte(html))
 	}))
 	defer server.Close()
 
@@ -391,13 +391,13 @@ func TestDefaultServiceConfig(t *testing.T) {
 
 func TestService_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<html><title>Test</title></html>"))
+		_, _ = w.Write([]byte("<html><title>Test</title></html>"))
 	}))
 	defer server.Close()
 
 	service := NewService(DefaultServiceConfig())
 
-	// Create cancelled context
+	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
@@ -408,6 +408,6 @@ func TestService_ContextCancellation(t *testing.T) {
 
 	_, err := service.Analyze(ctx, req)
 	if err == nil {
-		t.Error("expected error for cancelled context")
+		t.Error("expected error for canceled context")
 	}
 }

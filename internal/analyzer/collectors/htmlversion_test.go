@@ -88,9 +88,9 @@ func TestHTMLVersionCollector(t *testing.T) {
 
 func TestDetectHTMLVersion(t *testing.T) {
 	tests := []struct {
-		name     string
-		doctype  string
-		want     string
+		name    string
+		doctype string
+		want    string
 	}{
 		{
 			name:    "html5 lowercase",

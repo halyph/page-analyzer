@@ -10,9 +10,9 @@ import (
 
 func TestLoginFormCollector(t *testing.T) {
 	tests := []struct {
-		name            string
-		htmlInput       string
-		wantHasLogin    bool
+		name         string
+		htmlInput    string
+		wantHasLogin bool
 	}{
 		{
 			name: "simple login form",
@@ -107,8 +107,8 @@ func TestLoginFormCollector(t *testing.T) {
 			wantHasLogin: false, // HTML parser lowercases attribute values, so this won't match
 		},
 		{
-			name: "empty document",
-			htmlInput: "",
+			name:         "empty document",
+			htmlInput:    "",
 			wantHasLogin: false,
 		},
 		{

@@ -173,7 +173,7 @@ func TestLoadFromEnv_InvalidValues(t *testing.T) {
 		os.Setenv("ANALYZER_CHECK_WORKERS", "invalid")
 		defer os.Unsetenv("ANALYZER_CHECK_WORKERS")
 		assert.Panics(t, func() {
-			LoadFromEnv()
+			_, _ = LoadFromEnv()
 		})
 	})
 
@@ -182,7 +182,7 @@ func TestLoadFromEnv_InvalidValues(t *testing.T) {
 		os.Setenv("ANALYZER_MAX_BODY_SIZE", "not-a-number")
 		defer os.Unsetenv("ANALYZER_MAX_BODY_SIZE")
 		assert.Panics(t, func() {
-			LoadFromEnv()
+			_, _ = LoadFromEnv()
 		})
 	})
 
@@ -191,7 +191,7 @@ func TestLoadFromEnv_InvalidValues(t *testing.T) {
 		os.Setenv("ANALYZER_RATE_LIMIT_ENABLED", "maybe")
 		defer os.Unsetenv("ANALYZER_RATE_LIMIT_ENABLED")
 		assert.Panics(t, func() {
-			LoadFromEnv()
+			_, _ = LoadFromEnv()
 		})
 	})
 
@@ -200,7 +200,7 @@ func TestLoadFromEnv_InvalidValues(t *testing.T) {
 		os.Setenv("ANALYZER_CACHE_TTL", "forever")
 		defer os.Unsetenv("ANALYZER_CACHE_TTL")
 		assert.Panics(t, func() {
-			LoadFromEnv()
+			_, _ = LoadFromEnv()
 		})
 	})
 }

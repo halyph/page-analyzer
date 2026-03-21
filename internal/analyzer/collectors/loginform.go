@@ -7,10 +7,10 @@ import (
 
 // LoginFormCollector detects login forms by looking for password inputs inside forms
 type LoginFormCollector struct {
-	hasLoginForm  bool
-	inForm        bool
-	formDepth     int
-	currentDepth  int
+	hasLoginForm bool
+	inForm       bool
+	formDepth    int
+	currentDepth int
 }
 
 // Collect processes HTML tokens to detect login forms

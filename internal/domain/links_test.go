@@ -115,8 +115,8 @@ func TestLinkCheckResult_SuccessRate(t *testing.T) {
 
 func TestLinkError_Error(t *testing.T) {
 	tests := []struct {
-		name      string
-		linkError LinkError
+		name         string
+		linkError    LinkError
 		wantContains []string
 	}{
 		{

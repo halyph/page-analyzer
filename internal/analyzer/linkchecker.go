@@ -116,7 +116,7 @@ func (p *LinkCheckWorkerPool) Stop() {
 }
 
 // worker processes jobs from the queue
-func (p *LinkCheckWorkerPool) worker(id int) {
+func (p *LinkCheckWorkerPool) worker(_ int) {
 	for {
 		select {
 		case <-p.ctx.Done():
@@ -129,9 +129,12 @@ func (p *LinkCheckWorkerPool) worker(id int) {
 
 // processJob checks all links in a job
 func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
+	// Update job status with lock
+	job.Mu.Lock()
 	job.Status = domain.LinkCheckInProgress
 	now := time.Now()
 	job.StartedAt = &now
+	job.Mu.Unlock()
 
 	var inaccessible []domain.LinkError
 	accessible := 0
@@ -169,6 +172,7 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 
 	// Finalize job
 	completed := time.Now()
+	job.Mu.Lock()
 	job.CompletedAt = &completed
 	job.Status = domain.LinkCheckCompleted
 	job.Result = &domain.LinkCheckResult{
@@ -178,6 +182,7 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 		Duration:     completed.Sub(*job.StartedAt).String(),
 		CompletedAt:  completed,
 	}
+	job.Mu.Unlock()
 
 	p.results.Store(job.ID, job)
 }
@@ -302,7 +307,7 @@ func (p *LinkCheckWorkerPool) gcOldJobs() {
 // generateJobID creates a random job ID
 func generateJobID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
 }
 

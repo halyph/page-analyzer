@@ -39,11 +39,11 @@ type LinkCheckingConfig struct {
 
 // CachingConfig holds configuration for caching
 type CachingConfig struct {
-	Mode           string // memory, redis, multi, disabled
-	TTL            time.Duration
-	LinkCacheTTL   time.Duration
-	RedisAddr      string
-	RedisPassword  string
+	Mode            string // memory, redis, multi, disabled
+	TTL             time.Duration
+	LinkCacheTTL    time.Duration
+	RedisAddr       string
+	RedisPassword   string
 	MemoryCacheSize int
 }
 
@@ -56,10 +56,10 @@ type RateLimitingConfig struct {
 
 // ObservabilityConfig holds configuration for logging, metrics, and tracing
 type ObservabilityConfig struct {
-	LogLevel      string // debug, info, warn, error
-	LogFormat     string // json, text
-	OTELEnabled   bool
-	OTELEndpoint  string
+	LogLevel       string // debug, info, warn, error
+	LogFormat      string // json, text
+	OTELEnabled    bool
+	OTELEndpoint   string
 	MetricsEnabled bool
 }
 

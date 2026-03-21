@@ -14,17 +14,17 @@ type Service struct {
 	fetcher     *Fetcher
 	walker      *Walker
 	linkChecker *LinkCheckWorkerPool // Optional link checker
-	cache       cache.Cache           // Optional cache
+	cache       cache.Cache          // Optional cache
 }
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
-	Fetcher          FetcherConfig
-	Walker           WalkerConfig
-	LinkChecker      *LinkCheckConfig      // Optional: config to create new link checker
-	LinkCheckerPool  *LinkCheckWorkerPool  // Optional: use existing link checker
-	Cache            cache.Cache           // Optional: nil means no caching
-	CacheTTL         time.Duration         // Cache TTL (default: 1 hour)
+	Fetcher         FetcherConfig
+	Walker          WalkerConfig
+	LinkChecker     *LinkCheckConfig     // Optional: config to create new link checker
+	LinkCheckerPool *LinkCheckWorkerPool // Optional: use existing link checker
+	Cache           cache.Cache          // Optional: nil means no caching
+	CacheTTL        time.Duration        // Cache TTL (default: 1 hour)
 }
 
 // DefaultServiceConfig returns sensible defaults

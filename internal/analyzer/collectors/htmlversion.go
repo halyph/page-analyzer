@@ -7,6 +7,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	html5Version = "HTML5"
+)
+
 // HTMLVersionCollector detects HTML version from DOCTYPE
 type HTMLVersionCollector struct {
 	version string
@@ -41,7 +45,7 @@ func detectHTMLVersion(doctype string) string {
 
 	// HTML5
 	if doctype == "html" {
-		return "HTML5"
+		return html5Version
 	}
 
 	// HTML 4.01 Strict

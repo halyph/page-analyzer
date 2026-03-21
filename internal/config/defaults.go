@@ -24,11 +24,11 @@ func Defaults() Config {
 			SyncLimit:    10,
 		},
 		Caching: CachingConfig{
-			Mode:           "memory",
-			TTL:            1 * time.Hour,
-			LinkCacheTTL:   5 * time.Minute,
-			RedisAddr:      "localhost:6379",
-			RedisPassword:  "",
+			Mode:            "memory",
+			TTL:             1 * time.Hour,
+			LinkCacheTTL:    5 * time.Minute,
+			RedisAddr:       "localhost:6379",
+			RedisPassword:   "",
 			MemoryCacheSize: 100,
 		},
 		RateLimiting: RateLimitingConfig{

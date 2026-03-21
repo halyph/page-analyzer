@@ -11,31 +11,31 @@ import (
 
 func TestLinksCollector(t *testing.T) {
 	tests := []struct {
-		name             string
-		baseURL          string
-		htmlInput        string
-		wantInternal     []string
-		wantExternal     []string
-		wantTruncated    bool
+		name          string
+		baseURL       string
+		htmlInput     string
+		wantInternal  []string
+		wantExternal  []string
+		wantTruncated bool
 	}{
 		{
-			name:    "no links",
-			baseURL: "https://example.com",
-			htmlInput: `<html><body><p>No links here</p></body></html>`,
+			name:         "no links",
+			baseURL:      "https://example.com",
+			htmlInput:    `<html><body><p>No links here</p></body></html>`,
 			wantInternal: []string{},
 			wantExternal: []string{},
 		},
 		{
-			name:    "single internal link",
-			baseURL: "https://example.com",
-			htmlInput: `<html><body><a href="/about">About</a></body></html>`,
+			name:         "single internal link",
+			baseURL:      "https://example.com",
+			htmlInput:    `<html><body><a href="/about">About</a></body></html>`,
 			wantInternal: []string{"https://example.com/about"},
 			wantExternal: []string{},
 		},
 		{
-			name:    "single external link",
-			baseURL: "https://example.com",
-			htmlInput: `<html><body><a href="https://other.com">Other</a></body></html>`,
+			name:         "single external link",
+			baseURL:      "https://example.com",
+			htmlInput:    `<html><body><a href="https://other.com">Other</a></body></html>`,
 			wantInternal: []string{},
 			wantExternal: []string{"https://other.com"},
 		},

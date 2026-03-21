@@ -21,14 +21,14 @@ type AnalyzeResponse struct {
 
 // JobResponse represents the response for GET /api/jobs/:id
 type JobResponse struct {
-	ID          string                   `json:"id"`
-	Status      domain.LinkCheckStatus   `json:"status"`
-	URLs        []string                 `json:"urls,omitempty"`
-	BaseURL     string                   `json:"baseUrl,omitempty"`
-	Result      *domain.LinkCheckResult  `json:"result,omitempty"`
-	CreatedAt   string                   `json:"createdAt"`
-	StartedAt   *string                  `json:"startedAt,omitempty"`
-	CompletedAt *string                  `json:"completedAt,omitempty"`
+	ID          string                  `json:"id"`
+	Status      domain.LinkCheckStatus  `json:"status"`
+	URLs        []string                `json:"urls,omitempty"`
+	BaseURL     string                  `json:"baseUrl,omitempty"`
+	Result      *domain.LinkCheckResult `json:"result,omitempty"`
+	CreatedAt   string                  `json:"createdAt"`
+	StartedAt   *string                 `json:"startedAt,omitempty"`
+	CompletedAt *string                 `json:"completedAt,omitempty"`
 }
 
 // HealthResponse represents the response for GET /api/health

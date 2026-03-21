@@ -8,15 +8,15 @@ import (
 
 // Common error variables
 var (
-	ErrInvalidURL       = errors.New("invalid URL")
-	ErrEmptyURL         = errors.New("URL cannot be empty")
+	ErrInvalidURL        = errors.New("invalid URL")
+	ErrEmptyURL          = errors.New("URL cannot be empty")
 	ErrUnsupportedScheme = errors.New("unsupported URL scheme (must be http or https)")
-	ErrFetchFailed      = errors.New("failed to fetch URL")
-	ErrTimeout          = errors.New("request timeout")
-	ErrBodyTooLarge     = errors.New("response body exceeds maximum size")
-	ErrTooManyLinks     = errors.New("page contains too many links")
-	ErrCacheMiss        = errors.New("cache miss")
-	ErrCacheUnavailable = errors.New("cache unavailable")
+	ErrFetchFailed       = errors.New("failed to fetch URL")
+	ErrTimeout           = errors.New("request timeout")
+	ErrBodyTooLarge      = errors.New("response body exceeds maximum size")
+	ErrTooManyLinks      = errors.New("page contains too many links")
+	ErrCacheMiss         = errors.New("cache miss")
+	ErrCacheUnavailable  = errors.New("cache unavailable")
 )
 
 // AnalysisError represents an error that occurred during webpage analysis

@@ -7,6 +7,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	titleTag = "title"
+)
+
 // TitleCollector extracts the page title from <title> tags
 type TitleCollector struct {
 	title       string
@@ -24,7 +28,7 @@ func (c *TitleCollector) Collect(token html.Token) {
 
 	switch token.Type {
 	case html.StartTagToken:
-		if token.Data == "title" {
+		if token.Data == titleTag {
 			c.inTitle = true
 			c.titleBuffer.Reset()
 		}
@@ -35,7 +39,7 @@ func (c *TitleCollector) Collect(token html.Token) {
 		}
 
 	case html.EndTagToken:
-		if token.Data == "title" && c.inTitle {
+		if token.Data == titleTag && c.inTitle {
 			c.title = strings.TrimSpace(c.titleBuffer.String())
 			c.inTitle = false
 			c.found = true

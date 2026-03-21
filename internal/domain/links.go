@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -80,24 +81,29 @@ func (le LinkError) Error() string {
 
 // LinkCheckJob represents an asynchronous link checking job
 type LinkCheckJob struct {
-	ID          string              // Unique job identifier
-	URLs        []string            // URLs to check
-	BaseURL     string              // Context: the page being analyzed
-	Result      *LinkCheckResult    // Results (nil until completed)
-	Status      LinkCheckStatus     // Current status
-	CreatedAt   time.Time           // When job was created
-	StartedAt   *time.Time          // When processing started
-	CompletedAt *time.Time          // When processing completed
-	Error       string              // Error message if failed
+	Mu          sync.RWMutex     // Protects concurrent access to job fields
+	ID          string           // Unique job identifier
+	URLs        []string         // URLs to check
+	BaseURL     string           // Context: the page being analyzed
+	Result      *LinkCheckResult // Results (nil until completed)
+	Status      LinkCheckStatus  // Current status
+	CreatedAt   time.Time        // When job was created
+	StartedAt   *time.Time       // When processing started
+	CompletedAt *time.Time       // When processing completed
+	Error       string           // Error message if failed
 }
 
 // IsComplete returns true if the job has finished (success or failure)
 func (j *LinkCheckJob) IsComplete() bool {
+	j.Mu.RLock()
+	defer j.Mu.RUnlock()
 	return j.Status == LinkCheckCompleted || j.Status == LinkCheckFailed
 }
 
 // IsPending returns true if the job is waiting to be processed
 func (j *LinkCheckJob) IsPending() bool {
+	j.Mu.RLock()
+	defer j.Mu.RUnlock()
 	return j.Status == LinkCheckPending
 }
 

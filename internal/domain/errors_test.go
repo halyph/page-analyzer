@@ -8,8 +8,8 @@ import (
 
 func TestAnalysisError_Error(t *testing.T) {
 	tests := []struct {
-		name      string
-		err       *AnalysisError
+		name       string
+		err        *AnalysisError
 		wantSubstr string
 	}{
 		{

@@ -16,7 +16,7 @@ func TestFetcher_FetchSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><head><title>Test</title></head></html>"))
+		_, _ = w.Write([]byte("<html><head><title>Test</title></head></html>"))
 	}))
 	defer server.Close()
 
@@ -108,7 +108,7 @@ func TestFetcher_Redirect(t *testing.T) {
 		case "/middle":
 			http.Redirect(w, r, "/final", http.StatusFound)
 		case "/final":
-			w.Write([]byte("Final destination"))
+			_, _ = w.Write([]byte("Final destination"))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -151,7 +151,7 @@ func TestFetcher_Timeout(t *testing.T) {
 	// Create server that delays response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
-		w.Write([]byte("Too slow"))
+		_, _ = w.Write([]byte("Too slow"))
 	}))
 	defer server.Close()
 
@@ -170,7 +170,7 @@ func TestFetcher_Timeout(t *testing.T) {
 func TestFetcher_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
-		w.Write([]byte("Response"))
+		_, _ = w.Write([]byte("Response"))
 	}))
 	defer server.Close()
 
@@ -183,7 +183,7 @@ func TestFetcher_ContextCancellation(t *testing.T) {
 	_, err := fetcher.Fetch(ctx, server.URL)
 
 	if err == nil {
-		t.Fatal("expected error for cancelled context")
+		t.Fatal("expected error for canceled context")
 	}
 }
 
@@ -192,7 +192,7 @@ func TestFetcher_BodySizeLimit(t *testing.T) {
 	largeBody := strings.Repeat("a", 1*1024*1024)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(largeBody))
+		_, _ = w.Write([]byte(largeBody))
 	}))
 	defer server.Close()
 
@@ -217,7 +217,7 @@ func TestFetcher_UserAgent(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedUA = r.Header.Get("User-Agent")
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer server.Close()
 
@@ -239,7 +239,7 @@ func TestFetcher_Headers(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Custom-Header", "test-value")
 		w.Header().Set("Cache-Control", "no-cache")
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer server.Close()
 
