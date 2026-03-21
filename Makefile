@@ -16,29 +16,29 @@ help: ## Show this help message
 # Build targets
 build: ## Build the binary
 	@echo "$(CYAN)Building binary...$(RESET)"
-	go build -o bin/analyzer ./cmd/main.go
+	go build -o bin/analyzer ./cmd
 	@echo "✅ Binary built: bin/analyzer"
 
 build-all: ## Build for multiple platforms
 	@echo "$(CYAN)Building for multiple platforms...$(RESET)"
-	GOOS=linux GOARCH=amd64 go build -o bin/analyzer-linux-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=amd64 go build -o bin/analyzer-darwin-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=arm64 go build -o bin/analyzer-darwin-arm64 ./cmd/main.go
-	GOOS=windows GOARCH=amd64 go build -o bin/analyzer-windows-amd64.exe ./cmd/main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/analyzer-linux-amd64 ./cmd
+	GOOS=darwin GOARCH=amd64 go build -o bin/analyzer-darwin-amd64 ./cmd
+	GOOS=darwin GOARCH=arm64 go build -o bin/analyzer-darwin-arm64 ./cmd
+	GOOS=windows GOARCH=amd64 go build -o bin/analyzer-windows-amd64.exe ./cmd
 	@echo "✅ All binaries built"
 
 # Run targets
 run: ## Run the service locally
 	@echo "$(CYAN)Starting analyzer service...$(RESET)"
-	go run ./cmd/main.go serve
+	go run ./cmd serve
 
 run-cli: ## Run CLI analyzer (usage: make run-cli URL=https://example.com)
 	@echo "$(CYAN)Analyzing $(URL)...$(RESET)"
-	go run ./cmd/main.go analyze $(URL)
+	go run ./cmd analyze $(URL)
 
 run-cli-json: ## Run CLI analyzer with JSON output
 	@echo "$(CYAN)Analyzing $(URL) (JSON output)...$(RESET)"
-	go run ./cmd/main.go analyze $(URL) --json
+	go run ./cmd analyze $(URL) --json
 
 # Test targets
 test: ## Run all tests

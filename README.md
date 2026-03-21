@@ -225,8 +225,6 @@ See [TASK_AND_PLAN.md](TASK_AND_PLAN.md) for detailed architecture documentation
 - [x] Phase 2: Core Collectors ✅ (86.3% coverage, 83 tests)
 - [x] Phase 3: HTML Analyzer Core ✅ (93.6% coverage, 41 tests)
 - [ ] Phase 4: CLI Interface
-- [ ] Phase 3: HTML Analyzer Core
-- [ ] Phase 4: CLI Interface
 - [ ] Phase 5: Link Checking
 - [ ] Phase 6: Caching
 - [ ] Phase 7: HTTP Server + REST API

@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"time"
 
 	"github.com/oivasiv/page-analyzer/internal/analyzer/collectors"
 	"github.com/oivasiv/page-analyzer/internal/domain"
@@ -9,14 +10,16 @@ import (
 
 // Service is the main analyzer that orchestrates fetching, parsing, and collecting
 type Service struct {
-	fetcher *Fetcher
-	walker  *Walker
+	fetcher     *Fetcher
+	walker      *Walker
+	linkChecker *LinkCheckWorkerPool // Optional link checker
 }
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
-	Fetcher FetcherConfig
-	Walker  WalkerConfig
+	Fetcher     FetcherConfig
+	Walker      WalkerConfig
+	LinkChecker *LinkCheckConfig // Optional: nil disables link checking
 }
 
 // DefaultServiceConfig returns sensible defaults
@@ -29,9 +32,24 @@ func DefaultServiceConfig() ServiceConfig {
 
 // NewService creates a new analyzer service
 func NewService(config ServiceConfig) *Service {
-	return &Service{
+	s := &Service{
 		fetcher: NewFetcher(config.Fetcher),
 		walker:  NewWalker(config.Walker),
+	}
+
+	// Optional: create link checker if config provided
+	if config.LinkChecker != nil {
+		s.linkChecker = NewLinkCheckWorkerPool(*config.LinkChecker)
+		s.linkChecker.Start()
+	}
+
+	return s
+}
+
+// Stop gracefully shuts down the service
+func (s *Service) Stop() {
+	if s.linkChecker != nil {
+		s.linkChecker.Stop()
 	}
 }
 
@@ -58,6 +76,39 @@ func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*dom
 	// Walk HTML and collect data
 	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
 		return nil, domain.ErrParsingFailed(req.URL, err)
+	}
+
+	// Optional: check links
+	if s.linkChecker != nil && req.Options.CheckLinks != domain.LinkCheckDisabled {
+		// Combine internal and external links for checking
+		allLinks := append([]string{}, result.Links.Internal...)
+		allLinks = append(allLinks, result.Links.External...)
+
+		if len(allLinks) > 0 {
+			// Submit link check job
+			jobID := s.linkChecker.Submit(allLinks, result.URL)
+			result.Links.CheckJobID = jobID
+
+			// For sync mode, wait for completion
+			if req.Options.CheckLinks == domain.LinkCheckSync {
+				// Use a reasonable timeout for link checking (30 seconds)
+				timeout := 30 * time.Second
+				if req.Options.Timeout > 0 {
+					timeout = req.Options.Timeout
+				}
+				job, err := s.linkChecker.WaitForJob(jobID, timeout)
+				if err != nil {
+					// Don't fail the analysis, just mark check as failed
+					result.Links.CheckStatus = domain.LinkCheckFailed
+				} else {
+					result.Links.CheckStatus = job.Status
+					result.Links.CheckResult = job.Result
+				}
+			} else {
+				// Async mode - mark as pending
+				result.Links.CheckStatus = domain.LinkCheckPending
+			}
+		}
 	}
 
 	return result, nil
