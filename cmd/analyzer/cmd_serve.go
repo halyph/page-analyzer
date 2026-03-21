@@ -65,7 +65,7 @@ func runServe(c *cli.Context) error {
 	defer cacheImpl.Close()
 
 	linkChecker := createLinkChecker(cfg, logger)
-	analyzerService := createService(cfg, cacheImpl, linkChecker)
+	analyzerService := createService(cfg, cacheImpl, linkChecker, logger)
 	defer analyzerService.Stop()
 
 	// Create HTTP handlers
@@ -150,13 +150,14 @@ func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkChe
 	return linkChecker
 }
 
-func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyzer.LinkCheckWorkerPool) *analyzer.Service {
+func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyzer.LinkCheckWorkerPool, logger *slog.Logger) *analyzer.Service {
 	serviceCfg := analyzer.ServiceConfig{
 		Fetcher:         cfg.Fetching,
 		Walker:          cfg.Processing,
 		LinkCheckerPool: linkChecker,
 		Cache:           cacheImpl,
 		CacheTTL:        cfg.Caching.TTL,
+		Logger:          logger,
 	}
 
 	return analyzer.NewService(serviceCfg)

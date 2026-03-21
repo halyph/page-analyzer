@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
@@ -17,6 +18,7 @@ type Service struct {
 	linkChecker *LinkCheckWorkerPool // Optional link checker
 	cache       cache.Cache          // Optional cache
 	cacheTTL    time.Duration        // Cache TTL for HTML results
+	logger      *slog.Logger         // Optional logger (nil = no logging)
 }
 
 // ServiceConfig configures the analyzer service
@@ -27,6 +29,7 @@ type ServiceConfig struct {
 	LinkCheckerPool *LinkCheckWorkerPool // Optional: use existing link checker
 	Cache           cache.Cache          // Optional: nil means no caching
 	CacheTTL        time.Duration        // Cache TTL (default: 1 hour)
+	Logger          *slog.Logger         // Optional: logger (nil = no logging)
 }
 
 // NewService creates a new analyzer service
@@ -41,6 +44,7 @@ func NewService(cfg ServiceConfig) *Service {
 		fetcher:  NewFetcher(cfg.Fetcher),
 		walker:   NewWalker(cfg.Walker),
 		cacheTTL: cacheTTL,
+		logger:   cfg.Logger,
 	}
 
 	// Optional: use existing link checker pool or create new one
@@ -108,7 +112,11 @@ func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*dom
 		}
 
 		// Store in cache (before link checking)
-		_ = s.cache.SetHTML(ctx, result.URL, result, s.cacheTTL)
+		if err := s.cache.SetHTML(ctx, result.URL, result, s.cacheTTL); err != nil && s.logger != nil {
+			s.logger.Warn("failed to cache HTML result",
+				"url", result.URL,
+				"error", err)
+		}
 	}
 
 	// Optional: check links
