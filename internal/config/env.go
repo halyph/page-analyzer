@@ -1,140 +1,54 @@
 package config
 
-import (
-	"os"
-	"strconv"
-	"time"
-)
+import "github.com/halyph/page-analyzer/internal/envutil"
 
 // LoadFromEnv loads configuration from environment variables,
-// falling back to defaults for any missing values
+// falling back to defaults for any missing values.
+// Panics if environment variable values are invalid (fail-fast approach).
 func LoadFromEnv() (Config, error) {
 	cfg := Defaults()
 
 	// Server
-	cfg.Server.Addr = getEnv("ANALYZER_ADDR", cfg.Server.Addr)
-	if v := getEnvDuration("ANALYZER_READ_TIMEOUT"); v > 0 {
-		cfg.Server.ReadTimeout = v
-	}
-	if v := getEnvDuration("ANALYZER_WRITE_TIMEOUT"); v > 0 {
-		cfg.Server.WriteTimeout = v
-	}
+	cfg.Server.Addr = envutil.EnvString("ANALYZER_ADDR", cfg.Server.Addr)
+	cfg.Server.ReadTimeout = envutil.EnvDuration("ANALYZER_READ_TIMEOUT", cfg.Server.ReadTimeout)
+	cfg.Server.WriteTimeout = envutil.EnvDuration("ANALYZER_WRITE_TIMEOUT", cfg.Server.WriteTimeout)
 
 	// Fetching
-	if v := getEnvDuration("ANALYZER_FETCH_TIMEOUT"); v > 0 {
-		cfg.Fetching.Timeout = v
-	}
-	if v := getEnvInt64("ANALYZER_MAX_BODY_SIZE"); v > 0 {
-		cfg.Fetching.MaxBodySize = v
-	}
-	cfg.Fetching.UserAgent = getEnv("ANALYZER_USER_AGENT", cfg.Fetching.UserAgent)
+	cfg.Fetching.Timeout = envutil.EnvDuration("ANALYZER_FETCH_TIMEOUT", cfg.Fetching.Timeout)
+	cfg.Fetching.MaxBodySize = envutil.EnvInt64("ANALYZER_MAX_BODY_SIZE", cfg.Fetching.MaxBodySize)
+	cfg.Fetching.UserAgent = envutil.EnvString("ANALYZER_USER_AGENT", cfg.Fetching.UserAgent)
 
 	// Link Checking
-	cfg.LinkChecking.CheckMode = getEnv("ANALYZER_CHECK_MODE", cfg.LinkChecking.CheckMode)
-	if v := getEnvDuration("ANALYZER_CHECK_TIMEOUT"); v > 0 {
-		cfg.LinkChecking.CheckTimeout = v
-	}
-	if v := getEnvInt("ANALYZER_CHECK_WORKERS"); v > 0 {
-		cfg.LinkChecking.Workers = v
-	}
-	if v := getEnvInt("ANALYZER_QUEUE_SIZE"); v > 0 {
-		cfg.LinkChecking.QueueSize = v
-	}
-	if v := getEnvInt("ANALYZER_MAX_LINKS"); v > 0 {
-		cfg.LinkChecking.MaxLinks = v
-	}
-	if v := getEnvInt("ANALYZER_SYNC_LIMIT"); v > 0 {
-		cfg.LinkChecking.SyncLimit = v
-	}
+	cfg.LinkChecking.CheckMode = envutil.EnvString("ANALYZER_CHECK_MODE", cfg.LinkChecking.CheckMode)
+	cfg.LinkChecking.CheckTimeout = envutil.EnvDuration("ANALYZER_CHECK_TIMEOUT", cfg.LinkChecking.CheckTimeout)
+	cfg.LinkChecking.Workers = envutil.EnvInt("ANALYZER_CHECK_WORKERS", cfg.LinkChecking.Workers)
+	cfg.LinkChecking.QueueSize = envutil.EnvInt("ANALYZER_QUEUE_SIZE", cfg.LinkChecking.QueueSize)
+	cfg.LinkChecking.MaxLinks = envutil.EnvInt("ANALYZER_MAX_LINKS", cfg.LinkChecking.MaxLinks)
+	cfg.LinkChecking.SyncLimit = envutil.EnvInt("ANALYZER_SYNC_LIMIT", cfg.LinkChecking.SyncLimit)
 
 	// Caching
-	cfg.Caching.Mode = getEnv("ANALYZER_CACHE_MODE", cfg.Caching.Mode)
-	if v := getEnvDuration("ANALYZER_CACHE_TTL"); v > 0 {
-		cfg.Caching.TTL = v
-	}
-	if v := getEnvDuration("ANALYZER_LINK_CACHE_TTL"); v > 0 {
-		cfg.Caching.LinkCacheTTL = v
-	}
-	cfg.Caching.RedisAddr = getEnv("ANALYZER_REDIS_ADDR", cfg.Caching.RedisAddr)
-	cfg.Caching.RedisPassword = getEnv("ANALYZER_REDIS_PASSWORD", cfg.Caching.RedisPassword)
-	if v := getEnvInt("ANALYZER_MEMORY_CACHE_SIZE"); v > 0 {
-		cfg.Caching.MemoryCacheSize = v
-	}
+	cfg.Caching.Mode = envutil.EnvString("ANALYZER_CACHE_MODE", cfg.Caching.Mode)
+	cfg.Caching.TTL = envutil.EnvDuration("ANALYZER_CACHE_TTL", cfg.Caching.TTL)
+	cfg.Caching.LinkCacheTTL = envutil.EnvDuration("ANALYZER_LINK_CACHE_TTL", cfg.Caching.LinkCacheTTL)
+	cfg.Caching.RedisAddr = envutil.EnvString("ANALYZER_REDIS_ADDR", cfg.Caching.RedisAddr)
+	cfg.Caching.RedisPassword = envutil.EnvString("ANALYZER_REDIS_PASSWORD", cfg.Caching.RedisPassword)
+	cfg.Caching.MemoryCacheSize = envutil.EnvInt("ANALYZER_MEMORY_CACHE_SIZE", cfg.Caching.MemoryCacheSize)
 
 	// Rate Limiting
-	if v := getEnvBool("ANALYZER_RATE_LIMIT_ENABLED"); v != nil {
-		cfg.RateLimiting.Enabled = *v
-	}
-	if v := getEnvInt("ANALYZER_RATE_LIMIT_RPS"); v > 0 {
-		cfg.RateLimiting.RPS = v
-	}
-	if v := getEnvInt("ANALYZER_RATE_LIMIT_BURST"); v > 0 {
-		cfg.RateLimiting.Burst = v
-	}
+	cfg.RateLimiting.Enabled = envutil.EnvBool("ANALYZER_RATE_LIMIT_ENABLED", cfg.RateLimiting.Enabled)
+	cfg.RateLimiting.RPS = envutil.EnvInt("ANALYZER_RATE_LIMIT_RPS", cfg.RateLimiting.RPS)
+	cfg.RateLimiting.Burst = envutil.EnvInt("ANALYZER_RATE_LIMIT_BURST", cfg.RateLimiting.Burst)
 
 	// Observability
-	cfg.Observability.LogLevel = getEnv("ANALYZER_LOG_LEVEL", cfg.Observability.LogLevel)
-	cfg.Observability.LogFormat = getEnv("ANALYZER_LOG_FORMAT", cfg.Observability.LogFormat)
-	if v := getEnvBool("ANALYZER_OTEL_ENABLED"); v != nil {
-		cfg.Observability.OTELEnabled = *v
-	}
-	cfg.Observability.OTELEndpoint = getEnv("ANALYZER_OTEL_ENDPOINT", cfg.Observability.OTELEndpoint)
-	if v := getEnvBool("ANALYZER_METRICS_ENABLED"); v != nil {
-		cfg.Observability.MetricsEnabled = *v
-	}
+	cfg.Observability.LogLevel = envutil.EnvString("ANALYZER_LOG_LEVEL", cfg.Observability.LogLevel)
+	cfg.Observability.LogFormat = envutil.EnvString("ANALYZER_LOG_FORMAT", cfg.Observability.LogFormat)
+	cfg.Observability.OTELEnabled = envutil.EnvBool("ANALYZER_OTEL_ENABLED", cfg.Observability.OTELEnabled)
+	cfg.Observability.OTELEndpoint = envutil.EnvString("ANALYZER_OTEL_ENDPOINT", cfg.Observability.OTELEndpoint)
+	cfg.Observability.MetricsEnabled = envutil.EnvBool("ANALYZER_METRICS_ENABLED", cfg.Observability.MetricsEnabled)
 
 	// Degradation
-	if v := getEnvBool("ANALYZER_ALLOW_STALE"); v != nil {
-		cfg.Degradation.AllowStale = *v
-	}
-	if v := getEnvDuration("ANALYZER_MAX_STALENESS"); v > 0 {
-		cfg.Degradation.MaxStaleness = v
-	}
+	cfg.Degradation.AllowStale = envutil.EnvBool("ANALYZER_ALLOW_STALE", cfg.Degradation.AllowStale)
+	cfg.Degradation.MaxStaleness = envutil.EnvDuration("ANALYZER_MAX_STALENESS", cfg.Degradation.MaxStaleness)
 
 	return cfg, nil
-}
-
-// Helper functions for environment variable parsing
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string) int {
-	if value := os.Getenv(key); value != "" {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return 0
-}
-
-func getEnvInt64(key string) int64 {
-	if value := os.Getenv(key); value != "" {
-		if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-			return i
-		}
-	}
-	return 0
-}
-
-func getEnvBool(key string) *bool {
-	if value := os.Getenv(key); value != "" {
-		if b, err := strconv.ParseBool(value); err == nil {
-			return &b
-		}
-	}
-	return nil
-}
-
-func getEnvDuration(key string) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if d, err := time.ParseDuration(value); err == nil {
-			return d
-		}
-	}
-	return 0
 }

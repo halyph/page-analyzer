@@ -166,21 +166,43 @@ func TestLoadFromEnv_PartialOverride(t *testing.T) {
 
 func TestLoadFromEnv_InvalidValues(t *testing.T) {
 	clearEnv(t)
-	// Invalid values should be ignored and defaults used
-	os.Setenv("ANALYZER_CHECK_WORKERS", "invalid")
-	os.Setenv("ANALYZER_MAX_BODY_SIZE", "not-a-number")
-	os.Setenv("ANALYZER_RATE_LIMIT_ENABLED", "maybe")
-	os.Setenv("ANALYZER_CACHE_TTL", "forever")
 	defer clearEnv(t)
 
-	cfg, err := LoadFromEnv()
-	assert.NoError(t, err)
+	// Invalid integer should panic (fail-fast)
+	t.Run("invalid_int", func(t *testing.T) {
+		os.Setenv("ANALYZER_CHECK_WORKERS", "invalid")
+		defer os.Unsetenv("ANALYZER_CHECK_WORKERS")
+		assert.Panics(t, func() {
+			LoadFromEnv()
+		})
+	})
 
-	// Should use defaults when parsing fails
-	assert.Equal(t, 20, cfg.LinkChecking.Workers)
-	assert.Equal(t, int64(10*1024*1024), cfg.Fetching.MaxBodySize)
-	assert.True(t, cfg.RateLimiting.Enabled)
-	assert.Equal(t, 1*time.Hour, cfg.Caching.TTL)
+	// Invalid int64 should panic
+	t.Run("invalid_int64", func(t *testing.T) {
+		os.Setenv("ANALYZER_MAX_BODY_SIZE", "not-a-number")
+		defer os.Unsetenv("ANALYZER_MAX_BODY_SIZE")
+		assert.Panics(t, func() {
+			LoadFromEnv()
+		})
+	})
+
+	// Invalid boolean should panic
+	t.Run("invalid_bool", func(t *testing.T) {
+		os.Setenv("ANALYZER_RATE_LIMIT_ENABLED", "maybe")
+		defer os.Unsetenv("ANALYZER_RATE_LIMIT_ENABLED")
+		assert.Panics(t, func() {
+			LoadFromEnv()
+		})
+	})
+
+	// Invalid duration should panic
+	t.Run("invalid_duration", func(t *testing.T) {
+		os.Setenv("ANALYZER_CACHE_TTL", "forever")
+		defer os.Unsetenv("ANALYZER_CACHE_TTL")
+		assert.Panics(t, func() {
+			LoadFromEnv()
+		})
+	})
 }
 
 // Helper to clear all ANALYZER_* environment variables
