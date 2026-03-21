@@ -74,85 +74,109 @@ func (s *Service) Stop() {
 
 // Analyze performs a complete analysis of a webpage
 func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
-	var result *domain.AnalysisResult
-
-	// Check cache first
-	cached, err := s.cache.GetHTML(ctx, req.URL)
-	if err == nil {
-		// Cache hit - check if we need to do link checking
+	// Try cache first
+	if result, found := s.tryCache(ctx, req.URL, req.Options.CheckLinks); found {
+		// Cache hit with no link checking needed
 		if req.Options.CheckLinks == domain.LinkCheckDisabled {
-			return cached, nil
+			return result, nil
 		}
-		// Use cached result and skip to link checking
-		result = cached
-	} else {
-		// Cache miss - fetch and analyze
+		// Use cached result but perform link check
+		s.performLinkCheck(ctx, result, req)
+		return result, nil
+	}
 
-		// Initialize result
-		result = domain.NewAnalysisResult(req.URL)
-
-		// Fetch the webpage
-		fetchResult, err := s.fetcher.Fetch(ctx, req.URL)
-		if err != nil {
-			return nil, err
-		}
-
-		// Update URL (in case of redirects)
-		result.URL = fetchResult.URL
-
-		// Build collectors based on configuration
-		colls, err := s.buildCollectors(req)
-		if err != nil {
-			return nil, err
-		}
-
-		// Walk HTML and collect data
-		if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
-			return nil, domain.ErrParsingFailed(req.URL, err)
-		}
-
-		// Store in cache (before link checking)
-		if err := s.cache.SetHTML(ctx, result.URL, result, s.cacheTTL); err != nil && s.logger != nil {
-			s.logger.Warn("failed to cache HTML result",
-				"url", result.URL,
-				"error", err)
-		}
+	// Cache miss - fetch and analyze
+	result, err := s.fetchAndAnalyze(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	// Optional: check links
-	if s.linkChecker != nil && req.Options.CheckLinks != domain.LinkCheckDisabled {
-		// Combine internal and external links for checking
-		allLinks := append([]string{}, result.Links.Internal...)
-		allLinks = append(allLinks, result.Links.External...)
+	s.performLinkCheck(ctx, result, req)
 
-		if len(allLinks) > 0 {
-			// Submit link check job
-			jobID := s.linkChecker.Submit(allLinks, result.URL)
-			result.Links.CheckJobID = jobID
+	return result, nil
+}
 
-			// For sync mode, wait for completion
-			if req.Options.CheckLinks == domain.LinkCheckSync {
-				// Use a reasonable timeout for link checking (30 seconds)
-				timeout := 30 * time.Second
-				if req.Options.Timeout > 0 {
-					timeout = req.Options.Timeout
-				}
-				job, err := s.linkChecker.WaitForJob(jobID, timeout)
-				if err != nil {
-					// Don't fail the analysis, just mark check as failed
-					result.Links.CheckStatus = domain.LinkCheckFailed
-				} else {
-					result.Links.CheckStatus = job.Status
-					result.Links.CheckResult = job.Result
-				}
-			} else {
-				// Async mode - mark as pending
-				result.Links.CheckStatus = domain.LinkCheckPending
-			}
-		}
+// tryCache attempts to retrieve a cached result
+func (s *Service) tryCache(ctx context.Context, url string, checkLinks domain.LinkCheckMode) (*domain.AnalysisResult, bool) {
+	cached, err := s.cache.GetHTML(ctx, url)
+	if err != nil {
+		return nil, false
+	}
+	return cached, true
+}
+
+// fetchAndAnalyze fetches a webpage and performs HTML analysis
+func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
+	// Initialize result
+	result := domain.NewAnalysisResult(req.URL)
+
+	// Fetch the webpage
+	fetchResult, err := s.fetcher.Fetch(ctx, req.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update URL (in case of redirects)
+	result.URL = fetchResult.URL
+
+	// Build collectors based on configuration
+	colls, err := s.buildCollectors(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Walk HTML and collect data
+	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
+		return nil, domain.ErrParsingFailed(req.URL, err)
+	}
+
+	// Store in cache (before link checking)
+	if err := s.cache.SetHTML(ctx, result.URL, result, s.cacheTTL); err != nil && s.logger != nil {
+		s.logger.Warn("failed to cache HTML result",
+			"url", result.URL,
+			"error", err)
 	}
 
 	return result, nil
+}
+
+// performLinkCheck performs link checking if configured
+func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisResult, req domain.AnalysisRequest) {
+	if s.linkChecker == nil || req.Options.CheckLinks == domain.LinkCheckDisabled {
+		return
+	}
+
+	// Combine internal and external links for checking
+	allLinks := append([]string{}, result.Links.Internal...)
+	allLinks = append(allLinks, result.Links.External...)
+
+	if len(allLinks) == 0 {
+		return
+	}
+
+	// Submit link check job
+	jobID := s.linkChecker.Submit(allLinks, result.URL)
+	result.Links.CheckJobID = jobID
+
+	// For sync mode, wait for completion
+	if req.Options.CheckLinks == domain.LinkCheckSync {
+		timeout := 30 * time.Second
+		if req.Options.Timeout > 0 {
+			timeout = req.Options.Timeout
+		}
+		job, err := s.linkChecker.WaitForJob(jobID, timeout)
+		if err != nil {
+			// Don't fail the analysis, just mark check as failed
+			result.Links.CheckStatus = domain.LinkCheckFailed
+		} else {
+			result.Links.CheckStatus = job.Status
+			result.Links.CheckResult = job.Result
+		}
+	} else {
+		// Async mode - mark as pending
+		result.Links.CheckStatus = domain.LinkCheckPending
+	}
 }
 
 // buildCollectors creates the list of collectors to use for analysis
