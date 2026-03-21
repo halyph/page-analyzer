@@ -3,6 +3,7 @@ module github.com/halyph/page-analyzer
 go 1.25.4
 
 require (
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.52.0

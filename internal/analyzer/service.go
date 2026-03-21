@@ -19,11 +19,12 @@ type Service struct {
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
-	Fetcher     FetcherConfig
-	Walker      WalkerConfig
-	LinkChecker *LinkCheckConfig // Optional: nil disables link checking
-	Cache       cache.Cache      // Optional: nil means no caching
-	CacheTTL    time.Duration    // Cache TTL (default: 1 hour)
+	Fetcher          FetcherConfig
+	Walker           WalkerConfig
+	LinkChecker      *LinkCheckConfig      // Optional: config to create new link checker
+	LinkCheckerPool  *LinkCheckWorkerPool  // Optional: use existing link checker
+	Cache            cache.Cache           // Optional: nil means no caching
+	CacheTTL         time.Duration         // Cache TTL (default: 1 hour)
 }
 
 // DefaultServiceConfig returns sensible defaults
@@ -41,8 +42,10 @@ func NewService(config ServiceConfig) *Service {
 		walker:  NewWalker(config.Walker),
 	}
 
-	// Optional: create link checker if config provided
-	if config.LinkChecker != nil {
+	// Optional: use existing link checker pool or create new one
+	if config.LinkCheckerPool != nil {
+		s.linkChecker = config.LinkCheckerPool
+	} else if config.LinkChecker != nil {
 		s.linkChecker = NewLinkCheckWorkerPool(*config.LinkChecker)
 		s.linkChecker.Start()
 	}
@@ -66,41 +69,47 @@ func (s *Service) Stop() {
 
 // Analyze performs a complete analysis of a webpage
 func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
+	var result *domain.AnalysisResult
+
 	// Check cache first
-	if cached, err := s.cache.GetHTML(ctx, req.URL); err == nil {
-		// Cache hit - return immediately (unless link checking is requested)
-		if req.Options.CheckLinks == domain.LinkCheckDisabled || cached.Links.CheckStatus == domain.LinkCheckCompleted {
+	cached, err := s.cache.GetHTML(ctx, req.URL)
+	if err == nil {
+		// Cache hit - check if we need to do link checking
+		if req.Options.CheckLinks == domain.LinkCheckDisabled {
 			return cached, nil
 		}
-		// Cache hit but need to check links - continue with link checking below
+		// Use cached result and skip to link checking
+		result = cached
+	} else {
+		// Cache miss - fetch and analyze
+
+		// Initialize result
+		result = domain.NewAnalysisResult(req.URL)
+
+		// Fetch the webpage
+		fetchResult, err := s.fetcher.Fetch(ctx, req.URL)
+		if err != nil {
+			return nil, err
+		}
+
+		// Update URL (in case of redirects)
+		result.URL = fetchResult.URL
+
+		// Build collectors based on configuration
+		colls, err := s.buildCollectors(req)
+		if err != nil {
+			return nil, err
+		}
+
+		// Walk HTML and collect data
+		if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
+			return nil, domain.ErrParsingFailed(req.URL, err)
+		}
+
+		// Store in cache (before link checking)
+		cacheTTL := 1 * time.Hour
+		_ = s.cache.SetHTML(ctx, result.URL, result, cacheTTL)
 	}
-
-	// Initialize result
-	result := domain.NewAnalysisResult(req.URL)
-
-	// Fetch the webpage
-	fetchResult, err := s.fetcher.Fetch(ctx, req.URL)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update URL (in case of redirects)
-	result.URL = fetchResult.URL
-
-	// Build collectors based on configuration
-	colls, err := s.buildCollectors(req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Walk HTML and collect data
-	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
-		return nil, domain.ErrParsingFailed(req.URL, err)
-	}
-
-	// Store in cache (before link checking)
-	cacheTTL := 1 * time.Hour
-	_ = s.cache.SetHTML(ctx, result.URL, result, cacheTTL)
 
 	// Optional: check links
 	if s.linkChecker != nil && req.Options.CheckLinks != domain.LinkCheckDisabled {
