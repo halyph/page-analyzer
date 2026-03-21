@@ -103,3 +103,48 @@ func TestEnvDuration(t *testing.T) {
 		envDuration(key, 30*time.Second)
 	})
 }
+
+func TestEnvStringSlice(t *testing.T) {
+	key := "TEST_STRING_SLICE"
+	defer os.Unsetenv(key)
+
+	// Test with unset variable - should return fallback
+	fallback := []string{"a", "b", "c"}
+	result := envStringSlice(key, fallback)
+	assert.Equal(t, fallback, result)
+
+	// Test with single value
+	os.Setenv(key, "single")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{"single"}, result)
+
+	// Test with comma-separated values
+	os.Setenv(key, "one,two,three")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{"one", "two", "three"}, result)
+
+	// Test with spaces around values (should be trimmed)
+	os.Setenv(key, " one , two , three ")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{"one", "two", "three"}, result)
+
+	// Test with empty string - should return empty slice
+	os.Setenv(key, "")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, fallback, result)
+
+	// Test with trailing/leading commas (empty parts should be ignored)
+	os.Setenv(key, ",one,two,")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{"one", "two"}, result)
+
+	// Test with multiple consecutive commas (empty parts should be ignored)
+	os.Setenv(key, "one,,two,,,three")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{"one", "two", "three"}, result)
+
+	// Test with only commas (should return empty slice)
+	os.Setenv(key, ",,,")
+	result = envStringSlice(key, fallback)
+	assert.Equal(t, []string{}, result)
+}
