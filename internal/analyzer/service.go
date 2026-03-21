@@ -16,6 +16,7 @@ type Service struct {
 	walker      *Walker
 	linkChecker *LinkCheckWorkerPool // Optional link checker
 	cache       cache.Cache          // Optional cache
+	cacheTTL    time.Duration        // Cache TTL for HTML results
 }
 
 // ServiceConfig configures the analyzer service
@@ -30,9 +31,16 @@ type ServiceConfig struct {
 
 // NewService creates a new analyzer service
 func NewService(cfg ServiceConfig) *Service {
+	// Set default TTL if not specified
+	cacheTTL := cfg.CacheTTL
+	if cacheTTL == 0 {
+		cacheTTL = 1 * time.Hour
+	}
+
 	s := &Service{
-		fetcher: NewFetcher(cfg.Fetcher),
-		walker:  NewWalker(cfg.Walker),
+		fetcher:  NewFetcher(cfg.Fetcher),
+		walker:   NewWalker(cfg.Walker),
+		cacheTTL: cacheTTL,
 	}
 
 	// Optional: use existing link checker pool or create new one
@@ -100,8 +108,7 @@ func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*dom
 		}
 
 		// Store in cache (before link checking)
-		cacheTTL := 1 * time.Hour
-		_ = s.cache.SetHTML(ctx, result.URL, result, cacheTTL)
+		_ = s.cache.SetHTML(ctx, result.URL, result, s.cacheTTL)
 	}
 
 	// Optional: check links
