@@ -20,7 +20,8 @@ func Load() Config {
 			UserAgent:   envString("ANALYZER_USER_AGENT", "PageAnalyzer/1.0"),
 		},
 		Processing: ProcessingConfig{
-			MaxTokens: envInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
+			MaxTokens:  envInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
+			Collectors: envStringSlice("ANALYZER_COLLECTORS", []string{"htmlversion", "title", "headings", "loginform", "links"}),
 		},
 		LinkChecking: LinkCheckingConfig{
 			CheckMode:    envString("ANALYZER_CHECK_MODE", "async"),
@@ -81,7 +82,8 @@ type ServerConfig struct {
 
 // ProcessingConfig holds configuration for HTML processing
 type ProcessingConfig struct {
-	MaxTokens int // Maximum tokens to process
+	MaxTokens  int      // Maximum tokens to process
+	Collectors []string // List of collectors to run (default: htmlversion, title, headings, loginform, links)
 }
 
 // FetchingConfig holds configuration for fetching target URLs

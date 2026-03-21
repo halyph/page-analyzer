@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -74,4 +75,21 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 		panic(fmt.Sprintf("invalid duration value for %s: %v", key, value))
 	}
 	return durationVal
+}
+
+// envStringSlice returns a slice of strings from a comma-separated environment variable,
+// or the fallback value if the environment variable is not set.
+func envStringSlice(key string, fallback []string) []string {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

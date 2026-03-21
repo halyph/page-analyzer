@@ -19,6 +19,7 @@ type Service struct {
 	cache       cache.Cache      // Optional cache
 	cacheTTL    time.Duration    // Cache TTL for HTML results
 	logger      *slog.Logger     // Optional logger (nil = no logging)
+	collectors  []string         // List of collectors to run
 }
 
 // ServiceConfig configures the analyzer service
@@ -40,11 +41,18 @@ func NewService(cfg ServiceConfig) *Service {
 		cacheTTL = 1 * time.Hour
 	}
 
+	// Set default collectors if not specified
+	collectors := cfg.Walker.Collectors
+	if len(collectors) == 0 {
+		collectors = []string{"htmlversion", "title", "headings", "loginform", "links"}
+	}
+
 	s := &Service{
-		fetcher:  NewFetcher(cfg.Fetcher),
-		walker:   NewWalker(cfg.Walker),
-		cacheTTL: cacheTTL,
-		logger:   cfg.Logger,
+		fetcher:    NewFetcher(cfg.Fetcher),
+		walker:     NewWalker(cfg.Walker),
+		cacheTTL:   cacheTTL,
+		logger:     cfg.Logger,
+		collectors: collectors,
 	}
 
 	// Optional: use existing link checker pool or create new one
@@ -183,12 +191,9 @@ func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisR
 func (s *Service) buildCollectors(req domain.AnalysisRequest) ([]domain.Collector, error) {
 	registry := collectors.DefaultRegistry
 
-	// Core collectors (always enabled)
-	coreCollectors := []string{"htmlversion", "title", "headings", "loginform", "links"}
-
 	var colls []domain.Collector
 
-	for _, name := range coreCollectors {
+	for _, name := range s.collectors {
 		config := domain.CollectorConfig{
 			BaseURL:  req.URL,
 			MaxItems: req.Options.MaxLinks,
