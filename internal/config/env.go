@@ -1,4 +1,4 @@
-package envutil
+package config
 
 import (
 	"fmt"
@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-// EnvString returns the value of the environment variable with the given key,
+// envString returns the value of the environment variable with the given key,
 // or the fallback value if the environment variable is not set.
-func EnvString(key, fallback string) string {
+func envString(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
 	return fallback
 }
 
-// EnvInt returns the integer value of the environment variable with the given key,
+// envInt returns the integer value of the environment variable with the given key,
 // or the fallback value if the environment variable is not set.
 // Panics if the value cannot be converted to an integer.
-func EnvInt(key string, fallback int) int {
+func envInt(key string, fallback int) int {
 	value := os.Getenv(key)
 	if value == "" {
 		return fallback
@@ -31,10 +31,10 @@ func EnvInt(key string, fallback int) int {
 	return intVal
 }
 
-// EnvInt64 returns the int64 value of the environment variable with the given key,
+// envInt64 returns the int64 value of the environment variable with the given key,
 // or the fallback value if the environment variable is not set.
 // Panics if the value cannot be converted to an int64.
-func EnvInt64(key string, fallback int64) int64 {
+func envInt64(key string, fallback int64) int64 {
 	value := os.Getenv(key)
 	if value == "" {
 		return fallback
@@ -46,10 +46,10 @@ func EnvInt64(key string, fallback int64) int64 {
 	return int64Val
 }
 
-// EnvBool returns the boolean value of the environment variable with the given key,
+// envBool returns the boolean value of the environment variable with the given key,
 // or the fallback value if the environment variable is not set.
 // Panics if the value cannot be converted to a boolean.
-func EnvBool(key string, fallback bool) bool {
+func envBool(key string, fallback bool) bool {
 	value := os.Getenv(key)
 	if value == "" {
 		return fallback
@@ -61,10 +61,10 @@ func EnvBool(key string, fallback bool) bool {
 	return boolVal
 }
 
-// EnvDuration returns the duration value of the environment variable with the given key,
+// envDuration returns the duration value of the environment variable with the given key,
 // or the fallback value if the environment variable is not set.
 // Panics if the value cannot be converted to a duration.
-func EnvDuration(key string, fallback time.Duration) time.Duration {
+func envDuration(key string, fallback time.Duration) time.Duration {
 	value := os.Getenv(key)
 	if value == "" {
 		return fallback

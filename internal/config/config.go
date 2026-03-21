@@ -2,60 +2,58 @@ package config
 
 import (
 	"time"
-
-	"github.com/halyph/page-analyzer/internal/envutil"
 )
 
 // Load loads configuration from environment variables with defaults
 func Load() Config {
 	return Config{
 		Server: ServerConfig{
-			Addr:            envutil.EnvString("ANALYZER_ADDR", ":8080"),
-			ReadTimeout:     envutil.EnvDuration("ANALYZER_READ_TIMEOUT", 30*time.Second),
-			WriteTimeout:    envutil.EnvDuration("ANALYZER_WRITE_TIMEOUT", 30*time.Second),
-			IdleTimeout:     envutil.EnvDuration("ANALYZER_IDLE_TIMEOUT", 60*time.Second),
-			ShutdownTimeout: envutil.EnvDuration("ANALYZER_SHUTDOWN_TIMEOUT", 10*time.Second),
+			Addr:            envString("ANALYZER_ADDR", ":8080"),
+			ReadTimeout:     envDuration("ANALYZER_READ_TIMEOUT", 30*time.Second),
+			WriteTimeout:    envDuration("ANALYZER_WRITE_TIMEOUT", 30*time.Second),
+			IdleTimeout:     envDuration("ANALYZER_IDLE_TIMEOUT", 60*time.Second),
+			ShutdownTimeout: envDuration("ANALYZER_SHUTDOWN_TIMEOUT", 10*time.Second),
 		},
 		Fetching: FetchingConfig{
-			Timeout:     envutil.EnvDuration("ANALYZER_FETCH_TIMEOUT", 15*time.Second),
-			MaxBodySize: envutil.EnvInt64("ANALYZER_MAX_BODY_SIZE", 10*1024*1024), // 10MB
-			UserAgent:   envutil.EnvString("ANALYZER_USER_AGENT", "PageAnalyzer/1.0"),
+			Timeout:     envDuration("ANALYZER_FETCH_TIMEOUT", 15*time.Second),
+			MaxBodySize: envInt64("ANALYZER_MAX_BODY_SIZE", 10*1024*1024), // 10MB
+			UserAgent:   envString("ANALYZER_USER_AGENT", "PageAnalyzer/1.0"),
 		},
 		Processing: ProcessingConfig{
-			MaxTokens: envutil.EnvInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
+			MaxTokens: envInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
 		},
 		LinkChecking: LinkCheckingConfig{
-			CheckMode:    envutil.EnvString("ANALYZER_CHECK_MODE", "async"),
-			CheckTimeout: envutil.EnvDuration("ANALYZER_CHECK_TIMEOUT", 5*time.Second),
-			Workers:      envutil.EnvInt("ANALYZER_CHECK_WORKERS", 20),
-			QueueSize:    envutil.EnvInt("ANALYZER_QUEUE_SIZE", 100),
-			MaxLinks:     envutil.EnvInt("ANALYZER_MAX_LINKS", 10000),
-			SyncLimit:    envutil.EnvInt("ANALYZER_SYNC_LIMIT", 10),
-			JobWorkers:   envutil.EnvInt("ANALYZER_JOB_WORKERS", 10),
+			CheckMode:    envString("ANALYZER_CHECK_MODE", "async"),
+			CheckTimeout: envDuration("ANALYZER_CHECK_TIMEOUT", 5*time.Second),
+			Workers:      envInt("ANALYZER_CHECK_WORKERS", 20),
+			QueueSize:    envInt("ANALYZER_QUEUE_SIZE", 100),
+			MaxLinks:     envInt("ANALYZER_MAX_LINKS", 10000),
+			SyncLimit:    envInt("ANALYZER_SYNC_LIMIT", 10),
+			JobWorkers:   envInt("ANALYZER_JOB_WORKERS", 10),
 		},
 		Caching: CachingConfig{
-			Mode:            envutil.EnvString("ANALYZER_CACHE_MODE", "memory"),
-			TTL:             envutil.EnvDuration("ANALYZER_CACHE_TTL", 1*time.Hour),
-			LinkCacheTTL:    envutil.EnvDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
-			RedisAddr:       envutil.EnvString("ANALYZER_REDIS_ADDR", "localhost:6379"),
-			RedisPassword:   envutil.EnvString("ANALYZER_REDIS_PASSWORD", ""),
-			MemoryCacheSize: envutil.EnvInt("ANALYZER_MEMORY_CACHE_SIZE", 100),
+			Mode:            envString("ANALYZER_CACHE_MODE", "memory"),
+			TTL:             envDuration("ANALYZER_CACHE_TTL", 1*time.Hour),
+			LinkCacheTTL:    envDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
+			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "localhost:6379"),
+			RedisPassword:   envString("ANALYZER_REDIS_PASSWORD", ""),
+			MemoryCacheSize: envInt("ANALYZER_MEMORY_CACHE_SIZE", 100),
 		},
 		RateLimiting: RateLimitingConfig{
-			Enabled: envutil.EnvBool("ANALYZER_RATE_LIMIT_ENABLED", true),
-			RPS:     envutil.EnvInt("ANALYZER_RATE_LIMIT_RPS", 10),
-			Burst:   envutil.EnvInt("ANALYZER_RATE_LIMIT_BURST", 20),
+			Enabled: envBool("ANALYZER_RATE_LIMIT_ENABLED", true),
+			RPS:     envInt("ANALYZER_RATE_LIMIT_RPS", 10),
+			Burst:   envInt("ANALYZER_RATE_LIMIT_BURST", 20),
 		},
 		Observability: ObservabilityConfig{
-			LogLevel:       envutil.EnvString("ANALYZER_LOG_LEVEL", "info"),
-			LogFormat:      envutil.EnvString("ANALYZER_LOG_FORMAT", "json"),
-			OTELEnabled:    envutil.EnvBool("ANALYZER_OTEL_ENABLED", false),
-			OTELEndpoint:   envutil.EnvString("ANALYZER_OTEL_ENDPOINT", "localhost:4318"),
-			MetricsEnabled: envutil.EnvBool("ANALYZER_METRICS_ENABLED", true),
+			LogLevel:       envString("ANALYZER_LOG_LEVEL", "info"),
+			LogFormat:      envString("ANALYZER_LOG_FORMAT", "json"),
+			OTELEnabled:    envBool("ANALYZER_OTEL_ENABLED", false),
+			OTELEndpoint:   envString("ANALYZER_OTEL_ENDPOINT", "localhost:4318"),
+			MetricsEnabled: envBool("ANALYZER_METRICS_ENABLED", true),
 		},
 		Degradation: DegradationConfig{
-			AllowStale:   envutil.EnvBool("ANALYZER_ALLOW_STALE", true),
-			MaxStaleness: envutil.EnvDuration("ANALYZER_MAX_STALENESS", 24*time.Hour),
+			AllowStale:   envBool("ANALYZER_ALLOW_STALE", true),
+			MaxStaleness: envDuration("ANALYZER_MAX_STALENESS", 24*time.Hour),
 		},
 	}
 }
