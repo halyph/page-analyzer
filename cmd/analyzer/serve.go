@@ -1,0 +1,195 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/halyph/page-analyzer/internal/analyzer"
+	"github.com/halyph/page-analyzer/internal/cache"
+	"github.com/halyph/page-analyzer/internal/config"
+	"github.com/halyph/page-analyzer/internal/presentation/rest"
+	"github.com/halyph/page-analyzer/internal/presentation/web"
+	"github.com/halyph/page-analyzer/internal/server"
+	"github.com/urfave/cli/v2"
+)
+
+const (
+	defaultIdleTimeout     = 60 * time.Second
+	defaultShutdownTimeout = 10 * time.Second
+	defaultJobWorkers      = 10
+)
+
+func newServeCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "serve",
+		Usage: "Start the HTTP server",
+		UsageText: `analyzer serve [options]
+
+The server provides:
+  - POST /api/analyze - Analyze a webpage
+  - GET /api/jobs/:id - Get link check job status
+  - GET /api/health   - Health check
+
+Examples:
+  analyzer serve
+  analyzer serve --addr :9090`,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "addr",
+				Usage: "Server address",
+				Value: ":8080",
+			},
+		},
+		Action: runServe,
+	}
+}
+
+func runServe(c *cli.Context) error {
+	// Load configuration
+	cfg := config.Load()
+
+	if c.IsSet("addr") {
+		cfg.Server.Addr = c.String("addr")
+	}
+
+	// Setup logger
+	logger := setupLogger(cfg)
+	logger.Info("starting page analyzer server",
+		"version", Version,
+		"addr", cfg.Server.Addr,
+		"cache_mode", cfg.Caching.Mode,
+		"link_check_mode", cfg.LinkChecking.CheckMode,
+	)
+
+	// Create dependencies
+	cacheImpl := createCache(cfg, logger)
+	linkChecker := createLinkChecker(cfg, logger)
+	analyzerService := createService(cfg, cacheImpl, linkChecker)
+	defer analyzerService.Stop()
+
+	// Create HTTP handlers
+	restHandler := rest.NewHandler(analyzerService, linkChecker, logger)
+	webHandler, err := web.NewHandler(analyzerService, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create web handler: %w", err)
+	}
+
+	// Create and start server
+	srv := createServer(cfg, restHandler, webHandler, logger)
+
+	return runServerWithGracefulShutdown(srv, logger)
+}
+
+func setupLogger(cfg config.Config) *slog.Logger {
+	logLevel := parseLogLevel(cfg.Observability.LogLevel)
+	var handler slog.Handler
+
+	if cfg.Observability.LogFormat == "text" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	}
+
+	return slog.New(handler)
+}
+
+func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
+	switch cfg.Caching.Mode {
+	case "disabled":
+		logger.Info("cache disabled")
+		return cache.NewNoOpCache()
+	case "memory":
+		logger.Info("using memory cache", "size", cfg.Caching.MemoryCacheSize)
+		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+	default:
+		logger.Warn("unknown cache mode, using memory", "mode", cfg.Caching.Mode)
+		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+	}
+}
+
+func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkCheckWorkerPool {
+	linkCheckCfg := analyzer.LinkCheckConfig{
+		Timeout:    cfg.LinkChecking.CheckTimeout,
+		Workers:    cfg.LinkChecking.Workers,
+		QueueSize:  cfg.LinkChecking.QueueSize,
+		JobMaxAge:  cfg.Caching.LinkCacheTTL,
+		UserAgent:  cfg.Fetching.UserAgent,
+		JobWorkers: defaultJobWorkers,
+	}
+	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
+
+	if cfg.LinkChecking.CheckMode != "disabled" {
+		linkChecker.Start()
+		logger.Info("link checker started", "workers", cfg.LinkChecking.Workers)
+	} else {
+		logger.Info("link checking disabled")
+	}
+
+	return linkChecker
+}
+
+func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyzer.LinkCheckWorkerPool) *analyzer.Service {
+	serviceCfg := analyzer.ServiceConfig{
+		Fetcher: analyzer.FetcherConfig{
+			Timeout:     cfg.Fetching.Timeout,
+			MaxBodySize: cfg.Fetching.MaxBodySize,
+			UserAgent:   cfg.Fetching.UserAgent,
+		},
+		Walker: analyzer.WalkerConfig{
+			MaxTokens: defaultMaxTokens,
+		},
+		LinkCheckerPool: linkChecker,
+		Cache:           cacheImpl,
+		CacheTTL:        cfg.Caching.TTL,
+	}
+
+	return analyzer.NewService(serviceCfg)
+}
+
+func createServer(cfg config.Config, restHandler *rest.Handler, webHandler *web.Handler, logger *slog.Logger) *server.Server {
+	router := server.NewRouter(restHandler, webHandler, logger)
+
+	serverCfg := server.Config{
+		Addr:         cfg.Server.Addr,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  defaultIdleTimeout,
+	}
+
+	return server.New(router, serverCfg, logger)
+}
+
+func runServerWithGracefulShutdown(srv *server.Server, logger *slog.Logger) error {
+	errChan := make(chan error, 1)
+	go func() {
+		if err := srv.Start(); err != nil {
+			errChan <- err
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-errChan:
+		return fmt.Errorf("server failed to start: %w", err)
+	case sig := <-sigChan:
+		logger.Info("received signal, shutting down", "signal", sig)
+
+		ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			return fmt.Errorf("server shutdown failed: %w", err)
+		}
+
+		logger.Info("server stopped gracefully")
+	}
+
+	return nil
+}
