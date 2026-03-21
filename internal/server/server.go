@@ -22,16 +22,6 @@ type Config struct {
 	IdleTimeout  time.Duration
 }
 
-// DefaultConfig returns sensible defaults
-func DefaultConfig() Config {
-	return Config{
-		Addr:         ":8080",
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-}
-
 // New creates a new HTTP server
 func New(handler http.Handler, config Config, logger *slog.Logger) *Server {
 	if logger == nil {
