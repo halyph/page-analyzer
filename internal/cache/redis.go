@@ -64,11 +64,8 @@ func NewRedisCache(redisURL string, ttl time.Duration) (*RedisCache, error) {
 	}, nil
 }
 
-// GetHTML retrieves cached HTML analysis result
-//
-//nolint:dupl // Similar to GetLinkCheck but different types
-func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
-	key := htmlKey(url)
+// redisGet is a generic helper for retrieving and unmarshaling cached data
+func redisGet[T any](rc *RedisCache, ctx context.Context, key string) (*T, error) {
 	data, err := rc.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
 		rc.misses.Add(1)
@@ -78,13 +75,18 @@ func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.Analysis
 		return nil, fmt.Errorf("redis get failed: %w", err)
 	}
 
-	var result domain.AnalysisResult
+	var result T
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("unmarshal failed: %w", err)
 	}
 
 	rc.hits.Add(1)
 	return &result, nil
+}
+
+// GetHTML retrieves cached HTML analysis result
+func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
+	return redisGet[domain.AnalysisResult](rc, ctx, htmlKey(url))
 }
 
 // SetHTML stores HTML analysis result in cache
@@ -107,26 +109,8 @@ func (rc *RedisCache) SetHTML(ctx context.Context, url string, result *domain.An
 }
 
 // GetLinkCheck retrieves cached link check result
-//
-//nolint:dupl // Similar to GetHTML but different types
 func (rc *RedisCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
-	key := linkCheckKey(jobID)
-	data, err := rc.client.Get(ctx, key).Bytes()
-	if err == redis.Nil {
-		rc.misses.Add(1)
-		return nil, ErrCacheMiss
-	}
-	if err != nil {
-		return nil, fmt.Errorf("redis get failed: %w", err)
-	}
-
-	var result domain.LinkCheckResult
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, fmt.Errorf("unmarshal failed: %w", err)
-	}
-
-	rc.hits.Add(1)
-	return &result, nil
+	return redisGet[domain.LinkCheckResult](rc, ctx, linkCheckKey(jobID))
 }
 
 // SetLinkCheck stores link check result in cache
