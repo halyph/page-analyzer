@@ -3,9 +3,30 @@
 # Default target
 .DEFAULT_GOAL := help
 
-# Colors for output
-CYAN := \033[36m
-RESET := \033[0m
+# Version information
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_HEAD := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# Build settings
+BUILD_PATH := build
+BIN_PATH := bin
+BUILD_FLAGS := -mod=readonly -v
+LD_FLAGS := -X main.Version=$(VERSION) -X main.GitHead=$(GIT_HEAD)
+
+# Detect OS and architecture
+UNAME_S := $(shell uname -s | tr A-Z a-z)
+UNAME_M := $(shell uname -m)
+
+# Tool management
+TOOLS_DIR := $(shell pwd)/tools
+LOCAL_BIN := $(shell pwd)/.bin
+export PATH := $(LOCAL_BIN):$(PATH)
+
+# Colors (using tput for better compatibility)
+GREEN  := $(shell tput -Txterm setaf 2)
+YELLOW := $(shell tput -Txterm setaf 3)
+CYAN   := $(shell tput -Txterm setaf 6)
+RESET  := $(shell tput -Txterm sgr0)
 
 help: ## Show this help message
 	@echo "$(CYAN)Page Analyzer - Available Commands$(RESET)"
@@ -13,19 +34,35 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-20s$(RESET) %s\n", $$1, $$2}'
 	@echo ""
 
-# Build targets
-build: ## Build the binary
-	@echo "$(CYAN)Building binary...$(RESET)"
-	go build -o bin/analyzer ./cmd
-	@echo "✅ Binary built: bin/analyzer"
+## Build:
 
-build-all: ## Build for multiple platforms
-	@echo "$(CYAN)Building for multiple platforms...$(RESET)"
-	GOOS=linux GOARCH=amd64 go build -o bin/analyzer-linux-amd64 ./cmd
-	GOOS=darwin GOARCH=amd64 go build -o bin/analyzer-darwin-amd64 ./cmd
-	GOOS=darwin GOARCH=arm64 go build -o bin/analyzer-darwin-arm64 ./cmd
-	GOOS=windows GOARCH=amd64 go build -o bin/analyzer-windows-amd64.exe ./cmd
-	@echo "✅ All binaries built"
+# Build functions
+define fn_build
+@echo "$(GREEN)Building analyzer for $(UNAME_S)/$(UNAME_M)$(RESET)"
+@mkdir -p $(BIN_PATH)
+CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags="$(LD_FLAGS)" -o $(BIN_PATH)/analyzer ./cmd
+@echo "$(GREEN)✓ Binary built: $(BIN_PATH)/analyzer$(RESET)"
+endef
+
+define fn_build_linux
+@echo "$(GREEN)Building analyzer for linux/amd64$(RESET)"
+@mkdir -p $(BUILD_PATH)/linux/amd64
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags="$(LD_FLAGS)" -o $(BUILD_PATH)/linux/amd64/analyzer ./cmd
+@echo "$(GREEN)✓ linux/amd64 build complete$(RESET)"
+
+@echo "$(GREEN)Building analyzer for linux/arm64$(RESET)"
+@mkdir -p $(BUILD_PATH)/linux/arm64
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags="$(LD_FLAGS)" -o $(BUILD_PATH)/linux/arm64/analyzer ./cmd
+@echo "$(GREEN)✓ linux/arm64 build complete$(RESET)"
+endef
+
+.PHONY: build
+build: ## Build for current platform
+	$(call fn_build)
+
+.PHONY: build.linux
+build.linux: ## Build for Linux (amd64 + arm64)
+	$(call fn_build_linux)
 
 # Run targets
 run: ## Run the service locally
@@ -40,10 +77,13 @@ run-cli-json: ## Run CLI analyzer with JSON output
 	@echo "$(CYAN)Analyzing $(URL) (JSON output)...$(RESET)"
 	go run ./cmd analyze $(URL) --json
 
-# Test targets
+## Testing:
+
+.PHONY: test
 test: ## Run all tests
-	@echo "$(CYAN)Running tests...$(RESET)"
-	go test ./... -v -race -coverprofile=coverage.out
+	@echo "$(YELLOW)Running tests...$(RESET)"
+	@go test ./... -v -race -count=1 -coverprofile=coverage.out
+	@echo "$(GREEN)✓ All tests passed$(RESET)"
 
 test-unit: ## Run unit tests only
 	@echo "$(CYAN)Running unit tests...$(RESET)"
@@ -61,10 +101,26 @@ test-integration: ## Run integration tests
 test-watch: ## Run tests in watch mode (requires entr)
 	find . -name '*.go' | entr -c go test ./...
 
-# Code quality
+## Development:
+
+.PHONY: download
+download: ## Download dependencies
+	@echo "$(YELLOW)Downloading go.mod dependencies$(RESET)"
+	@go mod download
+
+.PHONY: install
+install: download ## Install dev tools locally
+	@echo "$(YELLOW)Installing tools from $(TOOLS_DIR)/tools.go$(RESET)"
+	@mkdir -p $(LOCAL_BIN)
+	@cd $(TOOLS_DIR) && cat tools.go | grep _ | awk -F'"' '{print $$2}' | GOBIN=$(LOCAL_BIN) xargs -I % go install %
+	@echo "$(GREEN)✓ Tools installed to $(LOCAL_BIN)$(RESET)"
+
+## Code Quality:
+
+.PHONY: lint
 lint: ## Run linters
-	@echo "$(CYAN)Running linters...$(RESET)"
-	golangci-lint run
+	@echo "$(YELLOW)Running golangci-lint...$(RESET)"
+	@$(LOCAL_BIN)/golangci-lint run ./...
 
 fmt: ## Format code
 	@echo "$(CYAN)Formatting code...$(RESET)"
@@ -132,13 +188,21 @@ load-test: ## Run load test (requires hey)
 		-d '{"url":"https://example.com"}' \
 		http://localhost:8080/api/analyze
 
-# Cleanup
+## Cleanup:
+
+.PHONY: clean
 clean: ## Clean build artifacts and caches
-	@echo "$(CYAN)Cleaning...$(RESET)"
-	rm -rf bin/
-	rm -f coverage.out coverage.html
-	go clean -cache -testcache
-	@echo "✅ Clean complete"
+	@echo "$(YELLOW)Cleaning build artifacts...$(RESET)"
+	@rm -rf $(BIN_PATH)/ $(BUILD_PATH)/
+	@rm -f coverage.out coverage.html
+	@go clean -cache -testcache
+	@echo "$(GREEN)✓ Clean complete$(RESET)"
+
+.PHONY: clean-tools
+clean-tools: ## Clean installed tools (use with caution)
+	@echo "$(YELLOW)Cleaning installed tools...$(RESET)"
+	@rm -rf $(LOCAL_BIN)
+	@echo "$(GREEN)✓ Tools cleaned$(RESET)"
 
 clean-all: clean docker-clean ## Deep clean (includes Docker volumes)
 
