@@ -222,7 +222,8 @@ See [TASK_AND_PLAN.md](TASK_AND_PLAN.md) for detailed architecture documentation
 
 - [x] Phase 0: Project Setup ✅
 - [x] Phase 1: Domain Layer ✅ (100% coverage)
-- [ ] Phase 2: Core Collectors
+- [x] Phase 2: Core Collectors ✅ (86.3% coverage, 83 tests)
+- [ ] Phase 3: HTML Analyzer Core
 - [ ] Phase 3: HTML Analyzer Core
 - [ ] Phase 4: CLI Interface
 - [ ] Phase 5: Link Checking
