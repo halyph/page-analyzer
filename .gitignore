@@ -5,7 +5,7 @@ bin/
 *.dll
 *.so
 *.dylib
-analyzer
+/analyzer
 
 # Test artifacts
 *.test

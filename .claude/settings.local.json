@@ -6,7 +6,9 @@
       "Bash(make:*)",
       "Bash(go build:*)",
       "Bash(go test:*)",
-      "Bash(go test ./internal/domain/... -cover)"
+      "Bash(go test ./internal/domain/... -cover)",
+      "Bash(git commit --amend --no-edit)",
+      "Bash(go test ./internal/analyzer -run TestDebugLoginForm -v)"
     ]
   }
 }

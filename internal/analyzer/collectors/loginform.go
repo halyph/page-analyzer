@@ -21,7 +21,7 @@ func (c *LoginFormCollector) Collect(token html.Token) {
 	}
 
 	switch token.Type {
-	case html.StartTagToken:
+	case html.StartTagToken, html.SelfClosingTagToken:
 		c.currentDepth++
 
 		if token.Data == "form" {
@@ -34,6 +34,11 @@ func (c *LoginFormCollector) Collect(token html.Token) {
 			if hasPasswordType(token.Attr) {
 				c.hasLoginForm = true
 			}
+		}
+
+		// Self-closing tags don't have matching end tags, so adjust depth
+		if token.Type == html.SelfClosingTagToken {
+			c.currentDepth--
 		}
 
 	case html.EndTagToken:
