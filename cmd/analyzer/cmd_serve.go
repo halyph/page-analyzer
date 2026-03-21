@@ -62,6 +62,8 @@ func runServe(c *cli.Context) error {
 
 	// Create dependencies
 	cacheImpl := createCache(cfg, logger)
+	defer cacheImpl.Close()
+
 	linkChecker := createLinkChecker(cfg, logger)
 	analyzerService := createService(cfg, cacheImpl, linkChecker)
 	defer analyzerService.Stop()
@@ -100,6 +102,27 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 	case "memory":
 		logger.Info("using memory cache", "size", cfg.Caching.MemoryCacheSize)
 		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+	case "redis":
+		logger.Info("using redis cache", "addr", cfg.Caching.RedisAddr)
+		redisCache, err := cache.NewRedisCache(cfg.Caching.RedisAddr, cfg.Caching.TTL)
+		if err != nil {
+			logger.Error("failed to create redis cache, falling back to memory", "error", err)
+			return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		}
+		return redisCache
+	case "multi":
+		logger.Info("using multi-tier cache (L1=memory, L2=redis)",
+			"l1_size", cfg.Caching.MemoryCacheSize,
+			"l2_addr", cfg.Caching.RedisAddr)
+		// Create L1 (memory)
+		l1 := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		// Create L2 (redis)
+		l2, err := cache.NewRedisCache(cfg.Caching.RedisAddr, cfg.Caching.TTL)
+		if err != nil {
+			logger.Error("failed to create redis L2 cache, using memory only", "error", err)
+			return l1
+		}
+		return cache.NewMultiCache(l1, l2)
 	default:
 		logger.Warn("unknown cache mode, using memory", "mode", cfg.Caching.Mode)
 		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)

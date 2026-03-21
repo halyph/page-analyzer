@@ -38,6 +38,12 @@ type Cache interface {
 
 	// Stats returns cache statistics
 	Stats() CacheStats
+
+	// Health checks cache availability
+	Health(ctx context.Context) error
+
+	// Close closes the cache and releases resources
+	Close() error
 }
 
 // CacheStats provides cache performance metrics

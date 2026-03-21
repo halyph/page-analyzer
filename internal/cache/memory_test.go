@@ -291,3 +291,95 @@ func TestMemoryCache_URLNormalization(t *testing.T) {
 	stats := cache.Stats()
 	assert.Equal(t, int64(1), stats.Hits)
 }
+
+func TestMemoryCache_Health(t *testing.T) {
+	cache := NewMemoryCache(10, 5*time.Minute)
+	defer cache.Close()
+	ctx := context.Background()
+
+	// Health should always return nil for memory cache
+	err := cache.Health(ctx)
+	assert.NoError(t, err)
+}
+
+func TestMemoryCache_Close(t *testing.T) {
+	cache := NewMemoryCache(10, 5*time.Minute)
+	ctx := context.Background()
+
+	// Add some data
+	url := "https://example.com"
+	result := &domain.AnalysisResult{URL: url}
+	err := cache.SetHTML(ctx, url, result, 0)
+	require.NoError(t, err)
+
+	// Close should stop cleanup goroutine
+	err = cache.Close()
+	assert.NoError(t, err)
+
+	// Cache should still be accessible after close (data remains in memory)
+	cached, err := cache.GetHTML(ctx, url)
+	require.NoError(t, err)
+	assert.Equal(t, url, cached.URL)
+}
+
+func TestMemoryCache_CloseIdempotent(t *testing.T) {
+	cache := NewMemoryCache(10, 5*time.Minute)
+
+	// Close multiple times should not panic
+	err := cache.Close()
+	assert.NoError(t, err)
+
+	// Second close might panic if stopCleanup is closed twice
+	// This test ensures it doesn't
+	err = cache.Close()
+	assert.NoError(t, err)
+}
+
+func TestMemoryCache_MaxTTLEnforcement(t *testing.T) {
+	cache := NewMemoryCache(10, 5*time.Minute)
+	defer cache.Close()
+	ctx := context.Background()
+
+	url := "https://example.com"
+	result := &domain.AnalysisResult{
+		URL:   url,
+		Title: "Test",
+	}
+
+	// Try to set with extremely long TTL (1000 hours)
+	extremeTTL := 1000 * time.Hour
+	err := cache.SetHTML(ctx, url, result, extremeTTL)
+	require.NoError(t, err)
+
+	// Entry should exist
+	cached, err := cache.GetHTML(ctx, url)
+	require.NoError(t, err)
+	assert.Equal(t, "Test", cached.Title)
+
+	// The actual TTL is capped at 24 hours internally
+	// We can't directly test the TTL, but we can verify it doesn't cause issues
+	// and that the entry was stored successfully
+}
+
+func TestMemoryCache_MaxTTLEnforcement_LinkCheck(t *testing.T) {
+	cache := NewMemoryCache(10, 5*time.Minute)
+	defer cache.Close()
+	ctx := context.Background()
+
+	jobID := "test-job-123"
+	result := &domain.LinkCheckResult{
+		Checked:    10,
+		Accessible: 9,
+		Duration:   "1s",
+	}
+
+	// Try to set with extremely long TTL
+	extremeTTL := 1000 * time.Hour
+	err := cache.SetLinkCheck(ctx, jobID, result, extremeTTL)
+	require.NoError(t, err)
+
+	// Entry should exist
+	cached, err := cache.GetLinkCheck(ctx, jobID)
+	require.NoError(t, err)
+	assert.Equal(t, 10, cached.Checked)
+}

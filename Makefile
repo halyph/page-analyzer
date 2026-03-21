@@ -12,10 +12,11 @@ PACKAGES       := $(shell go list -f '{{.Dir}}' ./...)
 BUILD_PATH     := build
 COVER_FILE     := $(BUILD_PATH)/coverprofile.txt
 
-GIT_HEAD    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-LDFLAGS     := -X main.Version=$(VERSION) -X main.GitHead=$(GIT_HEAD) -s -w
-TEST_FLAGS  := -race -count=1 -mod=readonly -cover -coverprofile $(COVER_FILE)
-BUILD_FLAGS := -mod=readonly -v
+GIT_HEAD          := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+LDFLAGS           := -X main.Version=$(VERSION) -X main.GitHead=$(GIT_HEAD) -s -w
+TEST_FLAGS        := -race -count=1 -mod=readonly -cover -coverprofile $(COVER_FILE)
+TEST_FLAGS_INTEG  := $(TEST_FLAGS) -tags=integration -timeout=5m
+BUILD_FLAGS       := -mod=readonly -v
 
 # Detect OS and architecture
 # linux/darwin and x86_64/arm64
@@ -113,7 +114,10 @@ build-dir:
 	@mkdir -p $(BUILD_PATH)
 
 .PHONY: test
-test: run-lint run-test ## Run all quality gates (tests, linting, etc.)
+test: run-lint run-test ## Run all quality gates (unit tests + linting)
+
+.PHONY: test-all
+test-all: run-lint run-test-integration ## Run all quality gates including integration tests
 
 .PHONY: cover
 cover: run-test ## Test and code coverage
@@ -129,8 +133,12 @@ run-lint:
 	$(BIN_PATH) golangci-lint run $(PACKAGES)
 
 .PHONY: run-test
-run-test: build-dir
+run-test: build-dir ## Run unit tests (skip integration tests)
 	go test $(TEST_FLAGS) $(PACKAGES)
+
+.PHONY: run-test-integration
+run-test-integration: build-dir ## Run all tests including integration tests (requires Docker)
+	go test $(TEST_FLAGS_INTEG) $(PACKAGES)
 
 .PHONY: generate
 generate: ## Run go generators

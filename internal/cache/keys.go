@@ -3,6 +3,7 @@ package cache
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"net"
 	"net/url"
 	"sort"
 	"strings"
@@ -32,13 +33,21 @@ func NormalizeURL(rawURL string) (string, error) {
 		parsed.Path = "/"
 	}
 
-	// Remove default ports
-	if parsed.Scheme == "http" && strings.HasSuffix(parsed.Host, ":80") {
-		parsed.Host = strings.TrimSuffix(parsed.Host, ":80")
+	// Remove default ports (use proper host:port parsing)
+	host, port, err := net.SplitHostPort(parsed.Host)
+	if err == nil {
+		// Port was specified - check if it's default
+		if (parsed.Scheme == "http" && port == "80") ||
+			(parsed.Scheme == "https" && port == "443") {
+			// Restore IPv6 brackets if needed
+			if strings.Contains(host, ":") {
+				parsed.Host = "[" + host + "]"
+			} else {
+				parsed.Host = host
+			}
+		}
 	}
-	if parsed.Scheme == "https" && strings.HasSuffix(parsed.Host, ":443") {
-		parsed.Host = strings.TrimSuffix(parsed.Host, ":443")
-	}
+	// If no port was specified, err != nil and we keep Host as-is
 
 	// Sort query parameters for consistency
 	if parsed.RawQuery != "" {

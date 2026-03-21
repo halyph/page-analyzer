@@ -63,6 +63,21 @@ func TestNormalizeURL(t *testing.T) {
 			input:    "HTTPS://Example.COM:443/Path?z=1&a=2#frag",
 			expected: "https://example.com/Path?a=2&z=1",
 		},
+		{
+			name:     "ipv6 with default port",
+			input:    "http://[::1]:80/path",
+			expected: "http://[::1]/path",
+		},
+		{
+			name:     "ipv6 with non-default port",
+			input:    "http://[::1]:8080/path",
+			expected: "http://[::1]:8080/path",
+		},
+		{
+			name:     "hostname ending in 80",
+			input:    "http://server180:8080/path",
+			expected: "http://server180:8080/path",
+		},
 	}
 
 	for _, tt := range tests {

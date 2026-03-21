@@ -10,6 +10,15 @@ import (
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
+const (
+	// cleanupInterval is how often expired entries are cleaned up
+	cleanupInterval = 5 * time.Minute
+
+	// maxTTL is the maximum allowed TTL for cache entries
+	// Prevents extremely long-lived entries that defeat cleanup
+	maxTTL = 24 * time.Hour
+)
+
 // MemoryCache implements an LRU cache in memory
 type MemoryCache struct {
 	maxSize int
@@ -23,6 +32,11 @@ type MemoryCache struct {
 	hits      int64
 	misses    int64
 	evictions int64
+
+	// Cleanup
+	stopCleanup chan struct{}
+	cleanupDone chan struct{}
+	closeOnce   sync.Once
 }
 
 // cacheEntry represents a cached item
@@ -43,12 +57,19 @@ func NewMemoryCache(maxSize int, ttl time.Duration) *MemoryCache {
 		ttl = 1 * time.Hour
 	}
 
-	return &MemoryCache{
-		maxSize: maxSize,
-		ttl:     ttl,
-		items:   make(map[string]*cacheEntry),
-		lru:     list.New(),
+	mc := &MemoryCache{
+		maxSize:     maxSize,
+		ttl:         ttl,
+		items:       make(map[string]*cacheEntry),
+		lru:         list.New(),
+		stopCleanup: make(chan struct{}),
+		cleanupDone: make(chan struct{}),
 	}
+
+	// Start background cleanup goroutine
+	go mc.cleanupLoop()
+
+	return mc
 }
 
 // GetHTML retrieves cached HTML analysis result
@@ -98,6 +119,10 @@ func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.A
 
 	if ttl == 0 {
 		ttl = mc.ttl
+	}
+	// Enforce maximum TTL to prevent extremely long-lived entries
+	if ttl > maxTTL {
+		ttl = maxTTL
 	}
 
 	// Serialize
@@ -175,6 +200,10 @@ func (mc *MemoryCache) SetLinkCheck(ctx context.Context, jobID string, result *d
 
 	if ttl == 0 {
 		ttl = 5 * time.Minute // Shorter TTL for link checks
+	}
+	// Enforce maximum TTL
+	if ttl > maxTTL {
+		ttl = maxTTL
 	}
 
 	data, err := json.Marshal(result)
@@ -259,6 +288,51 @@ func (mc *MemoryCache) Stats() CacheStats {
 		Evictions:   mc.evictions,
 		HitRate:     hitRate,
 		AvgItemSize: avgSize,
+	}
+}
+
+// Health checks cache availability (always healthy for memory cache)
+func (mc *MemoryCache) Health(ctx context.Context) error {
+	return nil
+}
+
+// Close stops the cleanup goroutine and releases resources
+// It's safe to call Close multiple times
+func (mc *MemoryCache) Close() error {
+	mc.closeOnce.Do(func() {
+		close(mc.stopCleanup)
+		<-mc.cleanupDone // Wait for cleanup goroutine to finish
+	})
+	return nil
+}
+
+// cleanupLoop periodically removes expired entries
+func (mc *MemoryCache) cleanupLoop() {
+	defer close(mc.cleanupDone)
+
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-mc.stopCleanup:
+			return
+		case <-ticker.C:
+			mc.cleanupExpired()
+		}
+	}
+}
+
+// cleanupExpired removes all expired entries
+func (mc *MemoryCache) cleanupExpired() {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	now := time.Now()
+	for _, entry := range mc.items {
+		if now.After(entry.expiresAt) {
+			mc.removeEntry(entry)
+		}
 	}
 }
 

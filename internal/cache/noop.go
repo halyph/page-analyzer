@@ -49,3 +49,13 @@ func (nc *NoOpCache) Clear(ctx context.Context) error {
 func (nc *NoOpCache) Stats() CacheStats {
 	return CacheStats{}
 }
+
+// Health always reports healthy
+func (nc *NoOpCache) Health(ctx context.Context) error {
+	return nil
+}
+
+// Close does nothing
+func (nc *NoOpCache) Close() error {
+	return nil
+}

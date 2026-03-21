@@ -35,7 +35,7 @@ func Load() Config {
 			Mode:            envString("ANALYZER_CACHE_MODE", "memory"),
 			TTL:             envDuration("ANALYZER_CACHE_TTL", 1*time.Hour),
 			LinkCacheTTL:    envDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
-			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "localhost:6379"),
+			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "redis://localhost:6379/0"),
 			RedisPassword:   envString("ANALYZER_REDIS_PASSWORD", ""),
 			MemoryCacheSize: envInt("ANALYZER_MEMORY_CACHE_SIZE", 100),
 		},
