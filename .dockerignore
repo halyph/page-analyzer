@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+TASK_AND_PLAN.md
+DECISIONS.md
+IMPROVEMENTS.md
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Test files
+*_test.go
+test/
+coverage.out
+
+# Development
+scripts/
+tmp/
+.env.local
+
+# Build artifacts
+bin/
