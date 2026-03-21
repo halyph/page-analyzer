@@ -204,7 +204,7 @@ func TestCheckLink_Success(t *testing.T) {
 	config := DefaultLinkCheckConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
-	err := pool.checkLink(pool.ctx, server.URL)
+	err := pool.checkLink(pool.ctx, server.URL, "")
 	assert.NoError(t, err)
 }
 
@@ -217,7 +217,7 @@ func TestCheckLink_404(t *testing.T) {
 	config := DefaultLinkCheckConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
-	err := pool.checkLink(pool.ctx, server.URL)
+	err := pool.checkLink(pool.ctx, server.URL, "")
 	assert.Error(t, err)
 	assert.Equal(t, 404, extractStatusCode(err))
 	assert.Contains(t, extractReason(err), "404")
@@ -227,7 +227,7 @@ func TestCheckLink_InvalidURL(t *testing.T) {
 	config := DefaultLinkCheckConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
-	err := pool.checkLink(pool.ctx, "ht!tp://invalid url")
+	err := pool.checkLink(pool.ctx, "ht!tp://invalid url", "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid_url")
 }
@@ -242,7 +242,7 @@ func TestCheckLink_AcceptsRedirects(t *testing.T) {
 	pool := NewLinkCheckWorkerPool(config)
 
 	// 3xx status codes should be considered accessible
-	err := pool.checkLink(pool.ctx, server.URL)
+	err := pool.checkLink(pool.ctx, server.URL, "")
 	assert.NoError(t, err)
 }
 
