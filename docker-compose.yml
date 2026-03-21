@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   # Page Analyzer Application
+  # NOTE: Build binary first with: make build.linux
   analyzer:
     build:
       context: .

@@ -1,30 +1,53 @@
 # Git
 .git
-.gitignore
-
-# Documentation
-*.md
-TASK_AND_PLAN.md
-DECISIONS.md
-IMPROVEMENTS.md
-
-# CI/CD
 .github
-
-# IDE
-.vscode
-.idea
-*.swp
-
-# Test files
-*_test.go
-test/
-coverage.out
-
-# Development
-scripts/
-tmp/
-.env.local
+.gitignore
 
 # Build artifacts
 bin/
+.bin/
+*.test
+*.out
+coverage.out
+coverage.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+go.work
+
+# Docker
+docker-compose*.yml
+Dockerfile.*
+
+# Documentation (keep only essential)
+*.md
+!README.md
+
+# CI/CD
+.claude/
+
+# Test data
+data/
+tmp/
+temp/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.*
+
+# Tools
+tools/
