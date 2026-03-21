@@ -65,6 +65,8 @@ func NewRedisCache(redisURL string, ttl time.Duration) (*RedisCache, error) {
 }
 
 // GetHTML retrieves cached HTML analysis result
+//
+//nolint:dupl // Similar to GetLinkCheck but different types
 func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
 	key := htmlKey(url)
 	data, err := rc.client.Get(ctx, key).Bytes()
@@ -105,6 +107,8 @@ func (rc *RedisCache) SetHTML(ctx context.Context, url string, result *domain.An
 }
 
 // GetLinkCheck retrieves cached link check result
+//
+//nolint:dupl // Similar to GetHTML but different types
 func (rc *RedisCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
 	key := linkCheckKey(jobID)
 	data, err := rc.client.Get(ctx, key).Bytes()

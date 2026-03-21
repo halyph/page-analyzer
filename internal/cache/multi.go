@@ -10,9 +10,9 @@ import (
 // MultiCache implements a multi-tier cache (L1=Memory, L2=Redis)
 // L1 provides fast local access, L2 provides shared distributed cache
 type MultiCache struct {
-	l1            Cache         // Memory cache (fast, local)
-	l2            Cache         // Redis cache (slower, shared)
-	backfillTTL   time.Duration // TTL for L1 backfill from L2 (HTML)
+	l1              Cache         // Memory cache (fast, local)
+	l2              Cache         // Redis cache (slower, shared)
+	backfillTTL     time.Duration // TTL for L1 backfill from L2 (HTML)
 	linkBackfillTTL time.Duration // TTL for L1 backfill from L2 (links)
 }
 
@@ -38,6 +38,8 @@ func NewMultiCacheWithTTL(l1, l2 Cache, backfillTTL, linkBackfillTTL time.Durati
 
 // GetHTML retrieves cached HTML analysis result
 // Strategy: Check L1 first, then L2, backfill L1 on L2 hit
+//
+//nolint:dupl // Similar to GetLinkCheck but different types
 func (mc *MultiCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
 	// Try L1 (memory) first
 	if result, err := mc.l1.GetHTML(ctx, url); err == nil {
@@ -73,6 +75,8 @@ func (mc *MultiCache) SetHTML(ctx context.Context, url string, result *domain.An
 
 // GetLinkCheck retrieves cached link check result
 // Strategy: Check L1 first, then L2, backfill L1 on L2 hit
+//
+//nolint:dupl // Similar to GetHTML but different types
 func (mc *MultiCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
 	// Try L1 (memory) first
 	if result, err := mc.l1.GetLinkCheck(ctx, jobID); err == nil {

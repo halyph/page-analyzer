@@ -15,11 +15,11 @@ import (
 type Service struct {
 	fetcher     *Fetcher
 	walker      *Walker
-	linkChecker LinkChecker      // Optional link checker
-	cache       cache.Cache      // Optional cache
-	cacheTTL    time.Duration    // Cache TTL for HTML results
-	logger      *slog.Logger     // Optional logger (nil = no logging)
-	collectors  []string         // List of collectors to run
+	linkChecker LinkChecker   // Optional link checker
+	cache       cache.Cache   // Optional cache
+	cacheTTL    time.Duration // Cache TTL for HTML results
+	logger      *slog.Logger  // Optional logger (nil = no logging)
+	collectors  []string      // List of collectors to run
 }
 
 // ServiceConfig configures the analyzer service
@@ -83,13 +83,13 @@ func (s *Service) Stop() {
 // Analyze performs a complete analysis of a webpage
 func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
 	// Try cache first
-	if result, found := s.tryCache(ctx, req.URL, req.Options.CheckLinks); found {
+	if result, found := s.tryCache(ctx, req.URL); found {
 		// Cache hit with no link checking needed
 		if req.Options.CheckLinks == domain.LinkCheckDisabled {
 			return result, nil
 		}
 		// Use cached result but perform link check
-		s.performLinkCheck(ctx, result, req)
+		s.performLinkCheck(result, req)
 		return result, nil
 	}
 
@@ -100,13 +100,13 @@ func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*dom
 	}
 
 	// Optional: check links
-	s.performLinkCheck(ctx, result, req)
+	s.performLinkCheck(result, req)
 
 	return result, nil
 }
 
 // tryCache attempts to retrieve a cached result
-func (s *Service) tryCache(ctx context.Context, url string, checkLinks domain.LinkCheckMode) (*domain.AnalysisResult, bool) {
+func (s *Service) tryCache(ctx context.Context, url string) (*domain.AnalysisResult, bool) {
 	cached, err := s.cache.GetHTML(ctx, url)
 	if err != nil {
 		return nil, false
@@ -150,7 +150,7 @@ func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisReques
 }
 
 // performLinkCheck performs link checking if configured
-func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisResult, req domain.AnalysisRequest) {
+func (s *Service) performLinkCheck(result *domain.AnalysisResult, req domain.AnalysisRequest) {
 	if s.linkChecker == nil || req.Options.CheckLinks == domain.LinkCheckDisabled {
 		return
 	}

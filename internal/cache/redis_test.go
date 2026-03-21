@@ -281,13 +281,13 @@ func TestRedisCache_ConcurrentAccess(t *testing.T) {
 
 	// Concurrent writes
 	for i := 0; i < 10; i++ {
-		go func(n int) {
+		go func() {
 			result := &domain.AnalysisResult{
 				URL:   "https://example.com",
 				Title: "Test",
 			}
 			_ = cache.SetHTML(ctx, "https://example.com", result, 1*time.Hour)
-		}(i)
+		}()
 	}
 
 	// Concurrent reads

@@ -256,9 +256,9 @@ func TestMultiCache_Stats_Combined(t *testing.T) {
 		Title: "Hit",
 	}
 	_ = l1.SetHTML(ctx, "https://hit.com", result, 1*time.Hour)
-	_, _ = cache.GetHTML(ctx, "https://hit.com")    // L1 hit
-	_, _ = cache.GetHTML(ctx, "https://miss1.com")  // L1 miss, L2 miss
-	_, _ = cache.GetHTML(ctx, "https://miss2.com")  // L1 miss, L2 miss
+	_, _ = cache.GetHTML(ctx, "https://hit.com")   // L1 hit
+	_, _ = cache.GetHTML(ctx, "https://miss1.com") // L1 miss, L2 miss
+	_, _ = cache.GetHTML(ctx, "https://miss2.com") // L1 miss, L2 miss
 
 	// Get combined stats
 	stats := cache.Stats()
@@ -341,13 +341,13 @@ func TestMultiCache_ConcurrentAccess(t *testing.T) {
 
 	// Concurrent writes
 	for i := 0; i < 10; i++ {
-		go func(n int) {
+		go func() {
 			result := &domain.AnalysisResult{
 				URL:   "https://example.com",
 				Title: "Concurrent",
 			}
 			_ = cache.SetHTML(ctx, "https://example.com", result, 1*time.Hour)
-		}(i)
+		}()
 	}
 
 	// Concurrent reads
