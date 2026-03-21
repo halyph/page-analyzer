@@ -35,6 +35,16 @@ func (nc *NoOpCache) SetLinkCheck(ctx context.Context, jobID string, result *dom
 	return nil
 }
 
+// GetCachedLink always returns cache miss
+func (nc *NoOpCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
+	return nil, ErrCacheMiss
+}
+
+// SetCachedLink does nothing
+func (nc *NoOpCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
+	return nil
+}
+
 // Delete does nothing
 func (nc *NoOpCache) Delete(ctx context.Context, url string) error {
 	return nil

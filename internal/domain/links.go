@@ -71,6 +71,15 @@ type LinkError struct {
 	Reason     string `json:"reason"`               // Reason for failure
 }
 
+// CachedLinkCheck represents a cached result of checking a single link
+type CachedLinkCheck struct {
+	URL        string `json:"url"`                  // The URL that was checked
+	Accessible bool   `json:"accessible"`           // Whether the link is accessible
+	StatusCode int    `json:"statusCode,omitempty"` // HTTP status code (if not accessible)
+	Reason     string `json:"reason,omitempty"`     // Reason for failure (if not accessible)
+	CheckedAt  int64  `json:"checkedAt"`            // Unix timestamp of when check occurred
+}
+
 // Error implements the error interface
 func (le LinkError) Error() string {
 	if le.StatusCode > 0 {

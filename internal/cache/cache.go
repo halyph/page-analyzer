@@ -30,6 +30,12 @@ type Cache interface {
 	// SetLinkCheck stores link check result in cache
 	SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error
 
+	// GetCachedLink retrieves a cached individual link check result
+	GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error)
+
+	// SetCachedLink stores an individual link check result in cache
+	SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error
+
 	// Delete removes a cached entry
 	Delete(ctx context.Context, url string) error
 

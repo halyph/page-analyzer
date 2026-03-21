@@ -2,6 +2,7 @@ package cache
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"net"
 	"net/url"
@@ -103,4 +104,11 @@ func GenerateHTMLKey(rawURL string) (string, error) {
 // GenerateLinkCheckKey generates a cache key for link check results
 func GenerateLinkCheckKey(jobID string) string {
 	return "links:" + jobID
+}
+
+// GenerateCachedLinkKey generates a cache key for an individual cached link check
+func GenerateCachedLinkKey(url string) string {
+	// Use hash of URL to keep key size reasonable
+	h := sha256.Sum256([]byte(url))
+	return "link:" + base64.RawURLEncoding.EncodeToString(h[:])
 }

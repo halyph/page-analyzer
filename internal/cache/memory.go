@@ -195,11 +195,87 @@ func (mc *MemoryCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.
 }
 
 // SetLinkCheck stores link check result in cache
+//
+//nolint:dupl // Similar to SetCachedLink but different types
 func (mc *MemoryCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
 	key := GenerateLinkCheckKey(jobID)
 
 	if ttl == 0 {
 		ttl = 5 * time.Minute // Shorter TTL for link checks
+	}
+	// Enforce maximum TTL
+	if ttl > maxTTL {
+		ttl = maxTTL
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	// Evict if at capacity
+	if mc.lru.Len() >= mc.maxSize {
+		mc.evictOldest()
+	}
+
+	entry := &cacheEntry{
+		key:       key,
+		value:     data,
+		expiresAt: time.Now().Add(ttl),
+		size:      int64(len(data)),
+	}
+
+	entry.element = mc.lru.PushFront(entry)
+	mc.items[key] = entry
+
+	return nil
+}
+
+// GetCachedLink retrieves a cached individual link check result
+func (mc *MemoryCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
+	key := GenerateCachedLinkKey(url)
+
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	entry, ok := mc.items[key]
+	if !ok {
+		mc.misses++
+		return nil, ErrCacheMiss
+	}
+
+	// Check if expired
+	if time.Now().After(entry.expiresAt) {
+		mc.misses++
+		delete(mc.items, key)
+		mc.lru.Remove(entry.element)
+		mc.evictions++
+		return nil, ErrCacheMiss
+	}
+
+	// Move to front (most recently used)
+	mc.lru.MoveToFront(entry.element)
+	mc.hits++
+
+	var result domain.CachedLinkCheck
+	if err := json.Unmarshal(entry.value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// SetCachedLink stores an individual link check result in cache
+//
+//nolint:dupl // Similar to SetLinkCheck but different types
+func (mc *MemoryCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
+	key := GenerateCachedLinkKey(url)
+
+	if ttl == 0 {
+		ttl = 5 * time.Minute // Short TTL for individual link checks
 	}
 	// Enforce maximum TTL
 	if ttl > maxTTL {

@@ -3,6 +3,7 @@ package analyzer
 import (
 	"time"
 
+	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
@@ -27,12 +28,14 @@ type LinkChecker interface {
 
 // LinkCheckConfig configures the link checker worker pool
 type LinkCheckConfig struct {
-	Workers    int           // Number of concurrent workers
-	QueueSize  int           // Job queue buffer size
-	Timeout    time.Duration // HTTP request timeout
-	JobMaxAge  time.Duration // How long to keep completed jobs
-	UserAgent  string        // User agent for HTTP requests
-	JobWorkers int           // Concurrent checks within a single job
+	Workers      int           // Number of concurrent workers
+	QueueSize    int           // Job queue buffer size
+	Timeout      time.Duration // HTTP request timeout
+	JobMaxAge    time.Duration // How long to keep completed jobs
+	UserAgent    string        // User agent for HTTP requests
+	JobWorkers   int           // Concurrent checks within a single job
+	Cache        cache.Cache   // Optional cache for individual link results
+	LinkCacheTTL time.Duration // TTL for caching individual link check results
 }
 
 // NewLinkCheckConfigFromGlobal converts global config to LinkCheckConfig

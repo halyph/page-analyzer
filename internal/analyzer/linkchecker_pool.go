@@ -10,21 +10,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 // LinkCheckWorkerPool manages concurrent link checking with bounded resources
 type LinkCheckWorkerPool struct {
-	workers     int
-	jobs        chan *domain.LinkCheckJob
-	results     sync.Map // JobID → *LinkCheckJob
-	client      *http.Client
-	timeout     time.Duration
-	maxAge      time.Duration
-	userAgent   string
-	stopCleanup chan struct{}
-	ctx         context.Context
-	cancel      context.CancelFunc
+	workers      int
+	jobs         chan *domain.LinkCheckJob
+	results      sync.Map // JobID → *LinkCheckJob
+	client       *http.Client
+	timeout      time.Duration
+	maxAge       time.Duration
+	userAgent    string
+	cache        cache.Cache   // Optional cache for individual link results
+	linkCacheTTL time.Duration // TTL for cached link results
+	stopCleanup  chan struct{}
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 // NewLinkCheckWorkerPool creates a new worker pool for link checking
@@ -47,21 +50,32 @@ func NewLinkCheckWorkerPool(cfg LinkCheckConfig) *LinkCheckWorkerPool {
 	if cfg.JobWorkers <= 0 {
 		cfg.JobWorkers = 10
 	}
+	if cfg.LinkCacheTTL <= 0 {
+		cfg.LinkCacheTTL = 5 * time.Minute // Default 5 minutes for link results
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Enable cookie handling for session-based sites
 	jar, _ := cookiejar.New(nil)
 
+	// Use no-op cache if none provided
+	linkCache := cfg.Cache
+	if linkCache == nil {
+		linkCache = cache.NewNoOpCache()
+	}
+
 	return &LinkCheckWorkerPool{
-		workers:     cfg.Workers,
-		jobs:        make(chan *domain.LinkCheckJob, cfg.QueueSize),
-		timeout:     cfg.Timeout,
-		maxAge:      cfg.JobMaxAge,
-		userAgent:   cfg.UserAgent,
-		stopCleanup: make(chan struct{}),
-		ctx:         ctx,
-		cancel:      cancel,
+		workers:      cfg.Workers,
+		jobs:         make(chan *domain.LinkCheckJob, cfg.QueueSize),
+		timeout:      cfg.Timeout,
+		maxAge:       cfg.JobMaxAge,
+		userAgent:    cfg.UserAgent,
+		cache:        linkCache,
+		linkCacheTTL: cfg.LinkCacheTTL,
+		stopCleanup:  make(chan struct{}),
+		ctx:          ctx,
+		cancel:       cancel,
 		client: &http.Client{
 			Timeout: cfg.Timeout,
 			Jar:     jar,
@@ -135,7 +149,42 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 			defer wg.Done()
 			defer func() { <-sem }() // Release
 
-			if err := p.checkLink(p.ctx, u, job.BaseURL); err != nil {
+			// Check cache first
+			if cached, err := p.cache.GetCachedLink(p.ctx, u); err == nil {
+				// Cache hit - use cached result
+				if cached.Accessible {
+					mu.Lock()
+					accessible++
+					mu.Unlock()
+				} else {
+					mu.Lock()
+					inaccessible = append(inaccessible, domain.LinkError{
+						URL:        u,
+						StatusCode: cached.StatusCode,
+						Reason:     cached.Reason,
+					})
+					mu.Unlock()
+				}
+				return
+			}
+
+			// Cache miss - perform actual check
+			err := p.checkLink(p.ctx, u, job.BaseURL)
+
+			// Store result in cache
+			cachedResult := &domain.CachedLinkCheck{
+				URL:        u,
+				Accessible: err == nil,
+				CheckedAt:  time.Now().Unix(),
+			}
+			if err != nil {
+				cachedResult.StatusCode = extractStatusCode(err)
+				cachedResult.Reason = extractReason(err)
+			}
+			_ = p.cache.SetCachedLink(p.ctx, u, cachedResult, p.linkCacheTTL)
+
+			// Update job results
+			if err != nil {
 				mu.Lock()
 				inaccessible = append(inaccessible, domain.LinkError{
 					URL:        u,

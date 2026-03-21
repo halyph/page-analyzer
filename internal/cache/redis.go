@@ -132,6 +132,30 @@ func (rc *RedisCache) SetLinkCheck(ctx context.Context, jobID string, result *do
 	return nil
 }
 
+// GetCachedLink retrieves a cached individual link check result
+func (rc *RedisCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
+	return redisGet[domain.CachedLinkCheck](rc, ctx, cachedLinkKey(url))
+}
+
+// SetCachedLink stores an individual link check result in cache
+func (rc *RedisCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
+	if ttl <= 0 {
+		ttl = 5 * time.Minute // Short TTL for individual link checks
+	}
+
+	key := cachedLinkKey(url)
+	data, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("marshal failed: %w", err)
+	}
+
+	if err := rc.client.Set(ctx, key, data, ttl).Err(); err != nil {
+		return fmt.Errorf("redis set failed: %w", err)
+	}
+
+	return nil
+}
+
 // Delete removes a cached entry
 func (rc *RedisCache) Delete(ctx context.Context, url string) error {
 	keys := []string{
@@ -214,4 +238,8 @@ func htmlKey(url string) string {
 
 func linkCheckKey(jobID string) string {
 	return GenerateLinkCheckKey(jobID)
+}
+
+func cachedLinkKey(url string) string {
+	return GenerateCachedLinkKey(url)
 }

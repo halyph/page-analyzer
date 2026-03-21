@@ -64,7 +64,7 @@ func runServe(c *cli.Context) error {
 	cacheImpl := createCache(cfg, logger)
 	defer cacheImpl.Close()
 
-	linkChecker := createLinkChecker(cfg, logger)
+	linkChecker := createLinkChecker(cfg, cacheImpl, logger)
 	analyzerService := createService(cfg, cacheImpl, linkChecker, logger)
 	defer analyzerService.Stop()
 
@@ -129,14 +129,16 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 	}
 }
 
-func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkCheckWorkerPool {
+func createLinkChecker(cfg config.Config, cacheImpl cache.Cache, logger *slog.Logger) *analyzer.LinkCheckWorkerPool {
 	linkCheckCfg := analyzer.LinkCheckConfig{
-		Timeout:    cfg.LinkChecking.CheckTimeout,
-		Workers:    cfg.LinkChecking.Workers,
-		QueueSize:  cfg.LinkChecking.QueueSize,
-		JobMaxAge:  cfg.Caching.LinkCacheTTL,
-		UserAgent:  cfg.Fetching.UserAgent,
-		JobWorkers: cfg.LinkChecking.JobWorkers,
+		Timeout:      cfg.LinkChecking.CheckTimeout,
+		Workers:      cfg.LinkChecking.Workers,
+		QueueSize:    cfg.LinkChecking.QueueSize,
+		JobMaxAge:    cfg.Caching.LinkCacheTTL,
+		UserAgent:    cfg.Fetching.UserAgent,
+		JobWorkers:   cfg.LinkChecking.JobWorkers,
+		Cache:        cacheImpl,
+		LinkCacheTTL: cfg.Caching.LinkCacheTTL,
 	}
 	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
 

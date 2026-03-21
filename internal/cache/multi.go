@@ -109,6 +109,42 @@ func (mc *MultiCache) SetLinkCheck(ctx context.Context, jobID string, result *do
 	return mc.l2.SetLinkCheck(ctx, jobID, result, ttl)
 }
 
+// GetCachedLink retrieves a cached individual link check result
+// Strategy: Check L1 first, then L2, backfill L1 on L2 hit
+//
+//nolint:dupl // Similar to GetHTML but different types
+func (mc *MultiCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
+	// Try L1 (memory) first
+	if result, err := mc.l1.GetCachedLink(ctx, url); err == nil {
+		return result, nil
+	}
+
+	// Try L2 (Redis)
+	result, err := mc.l2.GetCachedLink(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	// Backfill L1 cache (fire-and-forget)
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		_ = mc.l1.SetCachedLink(bgCtx, url, result, mc.linkBackfillTTL)
+	}()
+
+	return result, nil
+}
+
+// SetCachedLink stores an individual link check result in cache
+// Strategy: Write to both L1 and L2 in parallel
+func (mc *MultiCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
+	// Write to L1 (best effort, ignore errors)
+	_ = mc.l1.SetCachedLink(ctx, url, result, ttl)
+
+	// Write to L2 (this is the source of truth)
+	return mc.l2.SetCachedLink(ctx, url, result, ttl)
+}
+
 // Delete removes a cached entry from both tiers
 func (mc *MultiCache) Delete(ctx context.Context, url string) error {
 	// Delete from both tiers
