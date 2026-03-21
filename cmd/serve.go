@@ -11,6 +11,7 @@ import (
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/presentation/rest"
 	"github.com/halyph/page-analyzer/internal/presentation/web"
 	"github.com/halyph/page-analyzer/internal/server"
@@ -43,40 +44,99 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 }
 
+// parseLogLevel converts a string log level to slog.Level
+func parseLogLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
 func runServe(cmd *cobra.Command, args []string) error {
-	// Setup logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
+	// Load configuration from environment
+	cfg, err := config.LoadFromEnv()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Override addr from flag if provided
+	if cmd.Flags().Changed("addr") {
+		cfg.Server.Addr = flagAddr
+	}
+
+	// Setup logger based on config
+	logLevel := parseLogLevel(cfg.Observability.LogLevel)
+	var handler slog.Handler
+	if cfg.Observability.LogFormat == "text" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	}
+	logger := slog.New(handler)
 
 	logger.Info("starting page analyzer server",
 		"version", version,
-		"addr", flagAddr,
+		"addr", cfg.Server.Addr,
+		"cache_mode", cfg.Caching.Mode,
+		"link_check_mode", cfg.LinkChecking.CheckMode,
 	)
 
-	// Create memory cache (100 entries, 1 hour TTL)
-	memCache := cache.NewMemoryCache(100, 1*time.Hour)
+	// Create cache based on config
+	var cacheImpl cache.Cache
+	switch cfg.Caching.Mode {
+	case "disabled":
+		cacheImpl = cache.NewNoOpCache()
+		logger.Info("cache disabled")
+	case "memory":
+		cacheImpl = cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		logger.Info("using memory cache", "size", cfg.Caching.MemoryCacheSize)
+	default:
+		// Default to memory cache
+		cacheImpl = cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		logger.Warn("unknown cache mode, using memory", "mode", cfg.Caching.Mode)
+	}
 
-	// Create link checker
-	linkCheckCfg := analyzer.DefaultLinkCheckConfig()
-	linkCheckCfg.UserAgent = fmt.Sprintf("page-analyzer/%s", version)
+	// Create link checker based on config
+	linkCheckCfg := analyzer.LinkCheckConfig{
+		Timeout:    cfg.LinkChecking.CheckTimeout,
+		Workers:    cfg.LinkChecking.Workers,
+		QueueSize:  cfg.LinkChecking.QueueSize,
+		JobMaxAge:  cfg.Caching.LinkCacheTTL,
+		UserAgent:  cfg.Fetching.UserAgent,
+		JobWorkers: 10, // Concurrent checks within a job
+	}
 	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
-	linkChecker.Start()
-	defer linkChecker.Stop()
+
+	// Only start link checker if not disabled
+	if cfg.LinkChecking.CheckMode != "disabled" {
+		linkChecker.Start()
+		defer linkChecker.Stop()
+		logger.Info("link checker started", "workers", cfg.LinkChecking.Workers)
+	} else {
+		logger.Info("link checking disabled")
+	}
 
 	// Create analyzer service
 	serviceCfg := analyzer.ServiceConfig{
 		Fetcher: analyzer.FetcherConfig{
-			Timeout:     15 * time.Second,
-			MaxBodySize: 10 * 1024 * 1024, // 10MB
-			UserAgent:   fmt.Sprintf("page-analyzer/%s", version),
+			Timeout:     cfg.Fetching.Timeout,
+			MaxBodySize: cfg.Fetching.MaxBodySize,
+			UserAgent:   cfg.Fetching.UserAgent,
 		},
 		Walker: analyzer.WalkerConfig{
 			MaxTokens: 1_000_000, // 1M tokens max
 		},
-		LinkCheckerPool: linkChecker, // Use the same link checker instance
-		Cache:           memCache,
-		CacheTTL:        1 * time.Hour,
+		LinkCheckerPool: linkChecker,
+		Cache:           cacheImpl,
+		CacheTTL:        cfg.Caching.TTL,
 	}
 
 	analyzerService := analyzer.NewService(serviceCfg)
@@ -96,9 +156,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// Create server
 	serverCfg := server.Config{
-		Addr:         flagAddr,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		Addr:         cfg.Server.Addr,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  60 * time.Second,
 	}
 
