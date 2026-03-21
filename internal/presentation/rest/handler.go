@@ -14,10 +14,12 @@ type Handler struct {
 	analyzer    domain.Analyzer
 	linkChecker *analyzer.LinkCheckWorkerPool
 	logger      *slog.Logger
+	version     string
+	gitCommit   string
 }
 
 // NewHandler creates a new REST API handler
-func NewHandler(analyzer domain.Analyzer, linkChecker *analyzer.LinkCheckWorkerPool, logger *slog.Logger) *Handler {
+func NewHandler(analyzer domain.Analyzer, linkChecker *analyzer.LinkCheckWorkerPool, logger *slog.Logger, version, gitCommit string) *Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -26,6 +28,8 @@ func NewHandler(analyzer domain.Analyzer, linkChecker *analyzer.LinkCheckWorkerP
 		analyzer:    analyzer,
 		linkChecker: linkChecker,
 		logger:      logger,
+		version:     version,
+		gitCommit:   gitCommit,
 	}
 }
 

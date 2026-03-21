@@ -15,15 +15,30 @@
     </header>
 
     <main class="container">
-        {{template "content" .}}
+        {{if .ShowIndex}}
+            {{template "index-content" .}}
+        {{else if .Result}}
+            {{template "result-content" .}}
+        {{else if .Error}}
+            {{template "error-content" .}}
+        {{end}}
     </main>
 
     <footer>
         <div class="container">
-            <p>Built with Go · Open Source · <a href="/api/health">API Status</a></p>
+            <p>Built with Go · Open Source · <a href="/api/health">API Status</a>{{if .Version}} · Version: {{.Version}}{{end}}{{if .GitCommit}} · Commit: {{.GitCommit}}{{end}}</p>
         </div>
     </footer>
 
     <script src="/static/app.js"></script>
 </body>
 </html>
+
+{{define "error-content"}}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{.Error}}
+</div>
+<div class="card">
+    <a href="/" class="btn-primary">← Go Back</a>
+</div>
+{{end}}

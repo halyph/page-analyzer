@@ -66,8 +66,8 @@ func runServe(c *cli.Context) error {
 	defer analyzerService.Stop()
 
 	// Create HTTP handlers
-	restHandler := rest.NewHandler(analyzerService, linkChecker, logger)
-	webHandler, err := web.NewHandler(analyzerService, logger)
+	restHandler := rest.NewHandler(analyzerService, linkChecker, logger, Version, GitHead)
+	webHandler, err := web.NewHandler(analyzerService, logger, Version, GitHead)
 	if err != nil {
 		return fmt.Errorf("failed to create web handler: %w", err)
 	}

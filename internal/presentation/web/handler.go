@@ -17,13 +17,15 @@ var content embed.FS
 
 // Handler holds dependencies for web UI handlers
 type Handler struct {
-	analyzer domain.Analyzer
-	logger   *slog.Logger
-	tmpl     *template.Template
+	analyzer  domain.Analyzer
+	logger    *slog.Logger
+	tmpl      *template.Template
+	version   string
+	gitCommit string
 }
 
 // NewHandler creates a new web UI handler
-func NewHandler(analyzer domain.Analyzer, logger *slog.Logger) (*Handler, error) {
+func NewHandler(analyzer domain.Analyzer, logger *slog.Logger, version, gitCommit string) (*Handler, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -35,9 +37,11 @@ func NewHandler(analyzer domain.Analyzer, logger *slog.Logger) (*Handler, error)
 	}
 
 	return &Handler{
-		analyzer: analyzer,
-		logger:   logger,
-		tmpl:     tmpl,
+		analyzer:  analyzer,
+		logger:    logger,
+		tmpl:      tmpl,
+		version:   version,
+		gitCommit: gitCommit,
 	}, nil
 }
 
@@ -55,9 +59,8 @@ func (h *Handler) StaticFS() http.Handler {
 
 // HandleIndex shows the home page with form
 func (h *Handler) HandleIndex(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"Title": "Home",
-	}
+	data := h.baseData("Home")
+	data["ShowIndex"] = true
 
 	if err := h.tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
 		h.logger.Error("failed to render template", "error", err)
@@ -116,6 +119,20 @@ func (h *Handler) HandleAnalyze(w http.ResponseWriter, r *http.Request) {
 	h.renderResult(w, result)
 }
 
+// baseData creates base template data with version info
+func (h *Handler) baseData(title string) map[string]interface{} {
+	gitCommit := h.gitCommit
+	if len(gitCommit) > 7 {
+		gitCommit = gitCommit[:7]
+	}
+
+	return map[string]interface{}{
+		"Title":     title,
+		"Version":   h.version,
+		"GitCommit": gitCommit,
+	}
+}
+
 // renderResult renders the result page
 func (h *Handler) renderResult(w http.ResponseWriter, result *domain.AnalysisResult) {
 	// Convert to JSON for display
@@ -124,11 +141,9 @@ func (h *Handler) renderResult(w http.ResponseWriter, result *domain.AnalysisRes
 		jsonBytes = []byte("{}")
 	}
 
-	data := map[string]interface{}{
-		"Title":  "Results",
-		"Result": result,
-		"JSON":   string(jsonBytes),
-	}
+	data := h.baseData("Results")
+	data["Result"] = result
+	data["JSON"] = string(jsonBytes)
 
 	if err := h.tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
 		h.logger.Error("failed to render template", "error", err)
@@ -145,10 +160,8 @@ func (h *Handler) renderError(w http.ResponseWriter, message string, err error) 
 		errorMsg = err.Error()
 	}
 
-	data := map[string]interface{}{
-		"Title": "Error",
-		"Error": errorMsg,
-	}
+	data := h.baseData("Error")
+	data["Error"] = errorMsg
 
 	w.WriteHeader(http.StatusBadRequest)
 	if err := h.tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
