@@ -84,7 +84,7 @@ function displayLinkCheckResults(result, container) {
                     <ul>
                         ${result.inaccessible.map(link => `
                             <li>
-                                <code>${escapeHtml(link.url)}</code>
+                                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="broken-link">${escapeHtml(link.url)}</a>
                                 <span class="badge badge-error">${escapeHtml(link.reason)}</span>
                             </li>
                         `).join('')}

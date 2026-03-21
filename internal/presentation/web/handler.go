@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/halyph/page-analyzer/internal/domain"
@@ -135,6 +136,14 @@ func (h *Handler) baseData(title string) map[string]interface{} {
 
 // renderResult renders the result page
 func (h *Handler) renderResult(w http.ResponseWriter, result *domain.AnalysisResult) {
+	// Sort links alphabetically for better readability
+	if result.Links.Internal != nil {
+		sort.Strings(result.Links.Internal)
+	}
+	if result.Links.External != nil {
+		sort.Strings(result.Links.External)
+	}
+
 	// Convert to JSON for display
 	jsonBytes, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

@@ -303,6 +303,53 @@ button, .btn-primary, .btn-secondary {
     border-left: 4px solid var(--error);
 }
 
+/* Link Lists (Internal, External) */
+.link-list {
+    margin-top: 1rem;
+}
+
+.link-list summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 0.5rem;
+    background: var(--bg);
+    border-radius: 0.375rem;
+}
+
+.link-list ul {
+    list-style: none;
+    margin-top: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.link-list li {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.link-list li:last-child {
+    border-bottom: none;
+}
+
+.link-list .link-item {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--primary);
+    text-decoration: none;
+    word-break: break-all;
+    transition: color 0.2s ease;
+}
+
+.link-list .link-item:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.link-list .link-item:visited {
+    color: #7c3aed;
+}
+
 /* Broken Links */
 .broken-links {
     margin-top: 1rem;
@@ -332,6 +379,24 @@ button, .btn-primary, .btn-secondary {
 .broken-links code {
     font-family: 'Courier New', monospace;
     font-size: 0.875rem;
+}
+
+.broken-links .broken-link {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--primary);
+    text-decoration: none;
+    word-break: break-all;
+    transition: color 0.2s ease;
+}
+
+.broken-links .broken-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.broken-links .broken-link:visited {
+    color: #7c3aed;
 }
 
 /* Code */

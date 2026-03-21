@@ -70,6 +70,28 @@
         </div>
     </div>
 
+    {{if .Result.Links.Internal}}
+    <details class="link-list">
+        <summary>Internal Links ({{len .Result.Links.Internal}})</summary>
+        <ul>
+            {{range .Result.Links.Internal}}
+            <li><a href="{{.}}" target="_blank" rel="noopener noreferrer" class="link-item">{{.}}</a></li>
+            {{end}}
+        </ul>
+    </details>
+    {{end}}
+
+    {{if .Result.Links.External}}
+    <details class="link-list">
+        <summary>External Links ({{len .Result.Links.External}})</summary>
+        <ul>
+            {{range .Result.Links.External}}
+            <li><a href="{{.}}" target="_blank" rel="noopener noreferrer" class="link-item">{{.}}</a></li>
+            {{end}}
+        </ul>
+    </details>
+    {{end}}
+
     {{if .Result.Links.CheckJobID}}
     <div id="linkCheckStatus" data-job-id="{{.Result.Links.CheckJobID}}">
         <div class="alert alert-info">
@@ -105,7 +127,7 @@
             <ul>
                 {{range .Result.Links.CheckResult.Inaccessible}}
                 <li>
-                    <code>{{.URL}}</code>
+                    <a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="broken-link">{{.URL}}</a>
                     <span class="badge badge-error">{{.Reason}}</span>
                 </li>
                 {{end}}
