@@ -18,17 +18,23 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, ":8080", cfg.Server.Addr)
 	assert.Equal(t, 30*time.Second, cfg.Server.ReadTimeout)
 	assert.Equal(t, 30*time.Second, cfg.Server.WriteTimeout)
+	assert.Equal(t, 60*time.Second, cfg.Server.IdleTimeout)
+	assert.Equal(t, 10*time.Second, cfg.Server.ShutdownTimeout)
 
 	// Fetching defaults
 	assert.Equal(t, 15*time.Second, cfg.Fetching.Timeout)
 	assert.Equal(t, int64(10*1024*1024), cfg.Fetching.MaxBodySize)
 	assert.Equal(t, "PageAnalyzer/1.0", cfg.Fetching.UserAgent)
 
+	// Processing defaults
+	assert.Equal(t, 1_000_000, cfg.Processing.MaxTokens)
+
 	// Link checking defaults
 	assert.Equal(t, "async", cfg.LinkChecking.CheckMode)
 	assert.Equal(t, 5*time.Second, cfg.LinkChecking.CheckTimeout)
 	assert.Equal(t, 20, cfg.LinkChecking.Workers)
 	assert.Equal(t, 100, cfg.LinkChecking.QueueSize)
+	assert.Equal(t, 10, cfg.LinkChecking.JobWorkers)
 
 	// Caching defaults
 	assert.Equal(t, "memory", cfg.Caching.Mode)

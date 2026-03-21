@@ -3,26 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 	cliformatter "github.com/halyph/page-analyzer/internal/presentation/cli"
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	defaultCacheSize    = 100
-	defaultMaxBodySize  = 10 * 1024 * 1024 // 10MB
-	defaultMaxTokens    = 1_000_000        // 1M tokens
-	defaultCacheTTL     = 1 * time.Hour
-	defaultCheckTimeout = 30 * time.Second
-	defaultFetchTimeout = 15 * time.Second
-	defaultMaxLinks     = 10000
-)
-
 func newAnalyzeCommand() *cli.Command {
+	cfg := config.Load()
 	return &cli.Command{
 		Name:  "analyze",
 		Usage: "Analyze a webpage",
@@ -44,12 +35,12 @@ Examples:
 			&cli.IntFlag{
 				Name:  "max-links",
 				Usage: "Maximum number of links to collect",
-				Value: defaultMaxLinks,
+				Value: cfg.LinkChecking.MaxLinks,
 			},
 			&cli.DurationFlag{
 				Name:  "timeout",
 				Usage: "HTTP request timeout",
-				Value: defaultFetchTimeout,
+				Value: cfg.Fetching.Timeout,
 			},
 		},
 		Action: runAnalyze,
@@ -62,12 +53,14 @@ func runAnalyze(c *cli.Context) error {
 	}
 	url := c.Args().First()
 
+	cfg := config.Load()
+
 	// Create analyzer service
-	service := createAnalyzerService(c)
+	service := createAnalyzerService(cfg, c)
 	defer service.Stop()
 
 	// Build analysis request
-	req := buildAnalysisRequest(url, c)
+	req := buildAnalysisRequest(cfg, url, c)
 
 	// Perform analysis
 	result, err := service.Analyze(context.Background(), req)
@@ -85,32 +78,38 @@ func runAnalyze(c *cli.Context) error {
 	return nil
 }
 
-func createAnalyzerService(c *cli.Context) *analyzer.Service {
-	memCache := cache.NewMemoryCache(defaultCacheSize, defaultCacheTTL)
+func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service {
+	memCache := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
 
 	serviceCfg := analyzer.ServiceConfig{
 		Fetcher: analyzer.FetcherConfig{
 			Timeout:     c.Duration("timeout"),
-			MaxBodySize: defaultMaxBodySize,
-			UserAgent:   userAgent(),
+			MaxBodySize: cfg.Fetching.MaxBodySize,
+			UserAgent:   cfg.Fetching.UserAgent,
 		},
 		Walker: analyzer.WalkerConfig{
-			MaxTokens: defaultMaxTokens,
+			MaxTokens: cfg.Processing.MaxTokens,
 		},
 		Cache:    memCache,
-		CacheTTL: defaultCacheTTL,
+		CacheTTL: cfg.Caching.TTL,
 	}
 
 	if c.Bool("check-links") {
-		linkCheckCfg := analyzer.DefaultLinkCheckConfig()
-		linkCheckCfg.UserAgent = userAgent()
+		linkCheckCfg := analyzer.LinkCheckConfig{
+			Timeout:    cfg.LinkChecking.CheckTimeout,
+			Workers:    cfg.LinkChecking.Workers,
+			QueueSize:  cfg.LinkChecking.QueueSize,
+			JobMaxAge:  cfg.Caching.LinkCacheTTL,
+			UserAgent:  cfg.Fetching.UserAgent,
+			JobWorkers: cfg.LinkChecking.JobWorkers,
+		}
 		serviceCfg.LinkChecker = &linkCheckCfg
 	}
 
 	return analyzer.NewService(serviceCfg)
 }
 
-func buildAnalysisRequest(url string, c *cli.Context) domain.AnalysisRequest {
+func buildAnalysisRequest(cfg config.Config, url string, c *cli.Context) domain.AnalysisRequest {
 	checkMode := domain.LinkCheckDisabled
 	if c.Bool("check-links") {
 		checkMode = domain.LinkCheckSync
@@ -121,7 +120,7 @@ func buildAnalysisRequest(url string, c *cli.Context) domain.AnalysisRequest {
 		Options: domain.AnalysisOptions{
 			CheckLinks: checkMode,
 			MaxLinks:   c.Int("max-links"),
-			Timeout:    defaultCheckTimeout,
+			Timeout:    cfg.LinkChecking.CheckTimeout,
 		},
 	}
 }

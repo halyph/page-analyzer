@@ -1,14 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 )
-
-// userAgent returns the User-Agent string for HTTP requests
-func userAgent() string {
-	return fmt.Sprintf("page-analyzer/%s", Version)
-}
 
 // parseLogLevel converts a string log level to slog.Level
 func parseLogLevel(level string) slog.Level {

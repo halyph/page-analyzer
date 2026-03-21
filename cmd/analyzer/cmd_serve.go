@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
@@ -16,12 +15,6 @@ import (
 	"github.com/halyph/page-analyzer/internal/presentation/web"
 	"github.com/halyph/page-analyzer/internal/server"
 	"github.com/urfave/cli/v2"
-)
-
-const (
-	defaultIdleTimeout     = 60 * time.Second
-	defaultShutdownTimeout = 10 * time.Second
-	defaultJobWorkers      = 10
 )
 
 func newServeCommand() *cli.Command {
@@ -82,7 +75,7 @@ func runServe(c *cli.Context) error {
 	// Create and start server
 	srv := createServer(cfg, restHandler, webHandler, logger)
 
-	return runServerWithGracefulShutdown(srv, logger)
+	return runServerWithGracefulShutdown(srv, cfg, logger)
 }
 
 func setupLogger(cfg config.Config) *slog.Logger {
@@ -119,7 +112,7 @@ func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkChe
 		QueueSize:  cfg.LinkChecking.QueueSize,
 		JobMaxAge:  cfg.Caching.LinkCacheTTL,
 		UserAgent:  cfg.Fetching.UserAgent,
-		JobWorkers: defaultJobWorkers,
+		JobWorkers: cfg.LinkChecking.JobWorkers,
 	}
 	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
 
@@ -141,7 +134,7 @@ func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyz
 			UserAgent:   cfg.Fetching.UserAgent,
 		},
 		Walker: analyzer.WalkerConfig{
-			MaxTokens: defaultMaxTokens,
+			MaxTokens: cfg.Processing.MaxTokens,
 		},
 		LinkCheckerPool: linkChecker,
 		Cache:           cacheImpl,
@@ -158,13 +151,13 @@ func createServer(cfg config.Config, restHandler *rest.Handler, webHandler *web.
 		Addr:         cfg.Server.Addr,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  defaultIdleTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
 	return server.New(router, serverCfg, logger)
 }
 
-func runServerWithGracefulShutdown(srv *server.Server, logger *slog.Logger) error {
+func runServerWithGracefulShutdown(srv *server.Server, cfg config.Config, logger *slog.Logger) error {
 	errChan := make(chan error, 1)
 	go func() {
 		if err := srv.Start(); err != nil {
@@ -181,7 +174,7 @@ func runServerWithGracefulShutdown(srv *server.Server, logger *slog.Logger) erro
 	case sig := <-sigChan:
 		logger.Info("received signal, shutting down", "signal", sig)
 
-		ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {

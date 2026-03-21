@@ -10,14 +10,19 @@ import (
 func Load() Config {
 	return Config{
 		Server: ServerConfig{
-			Addr:         envutil.EnvString("ANALYZER_ADDR", ":8080"),
-			ReadTimeout:  envutil.EnvDuration("ANALYZER_READ_TIMEOUT", 30*time.Second),
-			WriteTimeout: envutil.EnvDuration("ANALYZER_WRITE_TIMEOUT", 30*time.Second),
+			Addr:            envutil.EnvString("ANALYZER_ADDR", ":8080"),
+			ReadTimeout:     envutil.EnvDuration("ANALYZER_READ_TIMEOUT", 30*time.Second),
+			WriteTimeout:    envutil.EnvDuration("ANALYZER_WRITE_TIMEOUT", 30*time.Second),
+			IdleTimeout:     envutil.EnvDuration("ANALYZER_IDLE_TIMEOUT", 60*time.Second),
+			ShutdownTimeout: envutil.EnvDuration("ANALYZER_SHUTDOWN_TIMEOUT", 10*time.Second),
 		},
 		Fetching: FetchingConfig{
 			Timeout:     envutil.EnvDuration("ANALYZER_FETCH_TIMEOUT", 15*time.Second),
 			MaxBodySize: envutil.EnvInt64("ANALYZER_MAX_BODY_SIZE", 10*1024*1024), // 10MB
 			UserAgent:   envutil.EnvString("ANALYZER_USER_AGENT", "PageAnalyzer/1.0"),
+		},
+		Processing: ProcessingConfig{
+			MaxTokens: envutil.EnvInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
 		},
 		LinkChecking: LinkCheckingConfig{
 			CheckMode:    envutil.EnvString("ANALYZER_CHECK_MODE", "async"),
@@ -26,6 +31,7 @@ func Load() Config {
 			QueueSize:    envutil.EnvInt("ANALYZER_QUEUE_SIZE", 100),
 			MaxLinks:     envutil.EnvInt("ANALYZER_MAX_LINKS", 10000),
 			SyncLimit:    envutil.EnvInt("ANALYZER_SYNC_LIMIT", 10),
+			JobWorkers:   envutil.EnvInt("ANALYZER_JOB_WORKERS", 10),
 		},
 		Caching: CachingConfig{
 			Mode:            envutil.EnvString("ANALYZER_CACHE_MODE", "memory"),
@@ -58,6 +64,7 @@ func Load() Config {
 type Config struct {
 	Server        ServerConfig
 	Fetching      FetchingConfig
+	Processing    ProcessingConfig
 	LinkChecking  LinkCheckingConfig
 	Caching       CachingConfig
 	RateLimiting  RateLimitingConfig
@@ -67,9 +74,16 @@ type Config struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Addr         string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	Addr            string
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	IdleTimeout     time.Duration
+	ShutdownTimeout time.Duration
+}
+
+// ProcessingConfig holds configuration for HTML processing
+type ProcessingConfig struct {
+	MaxTokens int // Maximum tokens to process
 }
 
 // FetchingConfig holds configuration for fetching target URLs
@@ -87,6 +101,7 @@ type LinkCheckingConfig struct {
 	QueueSize    int
 	MaxLinks     int
 	SyncLimit    int // For hybrid mode: check first N synchronously
+	JobWorkers   int // Concurrent checks within a single job
 }
 
 // CachingConfig holds configuration for caching
