@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
+	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/domain"
 	"github.com/halyph/page-analyzer/internal/presentation/cli"
 	"github.com/spf13/cobra"
@@ -44,6 +45,9 @@ func init() {
 func runAnalyze(cmd *cobra.Command, args []string) error {
 	url := args[0]
 
+	// Create memory cache for CLI (LRU cache with 100 entries, 1 hour TTL)
+	memCache := cache.NewMemoryCache(100, 1*time.Hour)
+
 	// Create analyzer service
 	serviceCfg := analyzer.ServiceConfig{
 		Fetcher: analyzer.FetcherConfig{
@@ -54,6 +58,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		Walker: analyzer.WalkerConfig{
 			MaxTokens: 1_000_000, // 1M tokens max
 		},
+		Cache:    memCache,
+		CacheTTL: 1 * time.Hour,
 	}
 
 	// Enable link checking if requested

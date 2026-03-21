@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
+	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
@@ -13,6 +14,7 @@ type Service struct {
 	fetcher     *Fetcher
 	walker      *Walker
 	linkChecker *LinkCheckWorkerPool // Optional link checker
+	cache       cache.Cache           // Optional cache
 }
 
 // ServiceConfig configures the analyzer service
@@ -20,6 +22,8 @@ type ServiceConfig struct {
 	Fetcher     FetcherConfig
 	Walker      WalkerConfig
 	LinkChecker *LinkCheckConfig // Optional: nil disables link checking
+	Cache       cache.Cache      // Optional: nil means no caching
+	CacheTTL    time.Duration    // Cache TTL (default: 1 hour)
 }
 
 // DefaultServiceConfig returns sensible defaults
@@ -43,6 +47,13 @@ func NewService(config ServiceConfig) *Service {
 		s.linkChecker.Start()
 	}
 
+	// Optional: use provided cache or default to no-op
+	if config.Cache != nil {
+		s.cache = config.Cache
+	} else {
+		s.cache = cache.NewNoOpCache()
+	}
+
 	return s
 }
 
@@ -55,6 +66,15 @@ func (s *Service) Stop() {
 
 // Analyze performs a complete analysis of a webpage
 func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
+	// Check cache first
+	if cached, err := s.cache.GetHTML(ctx, req.URL); err == nil {
+		// Cache hit - return immediately (unless link checking is requested)
+		if req.Options.CheckLinks == domain.LinkCheckDisabled || cached.Links.CheckStatus == domain.LinkCheckCompleted {
+			return cached, nil
+		}
+		// Cache hit but need to check links - continue with link checking below
+	}
+
 	// Initialize result
 	result := domain.NewAnalysisResult(req.URL)
 
@@ -77,6 +97,10 @@ func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*dom
 	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
 		return nil, domain.ErrParsingFailed(req.URL, err)
 	}
+
+	// Store in cache (before link checking)
+	cacheTTL := 1 * time.Hour
+	_ = s.cache.SetHTML(ctx, result.URL, result, cacheTTL)
 
 	// Optional: check links
 	if s.linkChecker != nil && req.Options.CheckLinks != domain.LinkCheckDisabled {
