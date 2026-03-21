@@ -21,10 +21,10 @@ func Load() Config {
 		},
 		Processing: ProcessingConfig{
 			MaxTokens:  envInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
-			Collectors: envStringSlice("ANALYZER_COLLECTORS", []string{"htmlversion", "title", "headings", "loginform", "links"}),
+			Collectors: envStringSlice("ANALYZER_COLLECTORS", DefaultCollectors),
 		},
 		LinkChecking: LinkCheckingConfig{
-			CheckMode:    envString("ANALYZER_CHECK_MODE", "async"),
+			CheckMode:    envString("ANALYZER_CHECK_MODE", LinkCheckModeAsync),
 			CheckTimeout: envDuration("ANALYZER_CHECK_TIMEOUT", 5*time.Second),
 			Workers:      envInt("ANALYZER_CHECK_WORKERS", 20),
 			QueueSize:    envInt("ANALYZER_QUEUE_SIZE", 100),
@@ -33,7 +33,7 @@ func Load() Config {
 			JobWorkers:   envInt("ANALYZER_JOB_WORKERS", 10),
 		},
 		Caching: CachingConfig{
-			Mode:            envString("ANALYZER_CACHE_MODE", "memory"),
+			Mode:            envString("ANALYZER_CACHE_MODE", CacheModeMemory),
 			TTL:             envDuration("ANALYZER_CACHE_TTL", 1*time.Hour),
 			LinkCacheTTL:    envDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
 			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "redis://localhost:6379/0"),
@@ -46,8 +46,8 @@ func Load() Config {
 			Burst:   envInt("ANALYZER_RATE_LIMIT_BURST", 20),
 		},
 		Observability: ObservabilityConfig{
-			LogLevel:       envString("ANALYZER_LOG_LEVEL", "info"),
-			LogFormat:      envString("ANALYZER_LOG_FORMAT", "json"),
+			LogLevel:       envString("ANALYZER_LOG_LEVEL", LogLevelInfo),
+			LogFormat:      envString("ANALYZER_LOG_FORMAT", LogFormatJSON),
 			OTELEnabled:    envBool("ANALYZER_OTEL_ENABLED", false),
 			OTELEndpoint:   envString("ANALYZER_OTEL_ENDPOINT", "localhost:4318"),
 			MetricsEnabled: envBool("ANALYZER_METRICS_ENABLED", true),

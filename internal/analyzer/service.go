@@ -44,7 +44,7 @@ func NewService(cfg ServiceConfig) *Service {
 	// Set default collectors if not specified
 	collectors := cfg.Walker.Collectors
 	if len(collectors) == 0 {
-		collectors = []string{"htmlversion", "title", "headings", "loginform", "links"}
+		collectors = config.DefaultCollectors
 	}
 
 	s := &Service{

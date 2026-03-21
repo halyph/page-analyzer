@@ -2,18 +2,20 @@ package main
 
 import (
 	"log/slog"
+
+	"github.com/halyph/page-analyzer/internal/config"
 )
 
 // parseLogLevel converts a string log level to slog.Level
 func parseLogLevel(level string) slog.Level {
 	switch level {
-	case "debug":
+	case config.LogLevelDebug:
 		return slog.LevelDebug
-	case "info":
+	case config.LogLevelInfo:
 		return slog.LevelInfo
-	case "warn":
+	case config.LogLevelWarn:
 		return slog.LevelWarn
-	case "error":
+	case config.LogLevelError:
 		return slog.LevelError
 	default:
 		return slog.LevelInfo

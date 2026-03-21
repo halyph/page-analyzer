@@ -85,7 +85,7 @@ func setupLogger(cfg config.Config) *slog.Logger {
 	logLevel := parseLogLevel(cfg.Observability.LogLevel)
 	var handler slog.Handler
 
-	if cfg.Observability.LogFormat == "text" {
+	if cfg.Observability.LogFormat == config.LogFormatText {
 		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
 	} else {
 		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
@@ -96,13 +96,13 @@ func setupLogger(cfg config.Config) *slog.Logger {
 
 func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 	switch cfg.Caching.Mode {
-	case "disabled":
+	case config.CacheModeDisabled:
 		logger.Info("cache disabled")
 		return cache.NewNoOpCache()
-	case "memory":
+	case config.CacheModeMemory:
 		logger.Info("using memory cache", "size", cfg.Caching.MemoryCacheSize)
 		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
-	case "redis":
+	case config.CacheModeRedis:
 		logger.Info("using redis cache", "addr", cfg.Caching.RedisAddr)
 		redisCache, err := cache.NewRedisCache(cfg.Caching.RedisAddr, cfg.Caching.TTL)
 		if err != nil {
@@ -110,7 +110,7 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 			return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
 		}
 		return redisCache
-	case "multi":
+	case config.CacheModeMulti:
 		logger.Info("using multi-tier cache (L1=memory, L2=redis)",
 			"l1_size", cfg.Caching.MemoryCacheSize,
 			"l2_addr", cfg.Caching.RedisAddr)
@@ -140,7 +140,7 @@ func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkChe
 	}
 	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
 
-	if cfg.LinkChecking.CheckMode != "disabled" {
+	if cfg.LinkChecking.CheckMode != config.LinkCheckModeDisabled {
 		linkChecker.Start()
 		logger.Info("link checker started", "workers", cfg.LinkChecking.Workers)
 	} else {

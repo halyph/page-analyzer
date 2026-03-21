@@ -30,14 +30,14 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, 1_000_000, cfg.Processing.MaxTokens)
 
 	// Link checking defaults
-	assert.Equal(t, "async", cfg.LinkChecking.CheckMode)
+	assert.Equal(t, LinkCheckModeAsync, cfg.LinkChecking.CheckMode)
 	assert.Equal(t, 5*time.Second, cfg.LinkChecking.CheckTimeout)
 	assert.Equal(t, 20, cfg.LinkChecking.Workers)
 	assert.Equal(t, 100, cfg.LinkChecking.QueueSize)
 	assert.Equal(t, 10, cfg.LinkChecking.JobWorkers)
 
 	// Caching defaults
-	assert.Equal(t, "memory", cfg.Caching.Mode)
+	assert.Equal(t, CacheModeMemory, cfg.Caching.Mode)
 	assert.Equal(t, 1*time.Hour, cfg.Caching.TTL)
 	assert.Equal(t, 5*time.Minute, cfg.Caching.LinkCacheTTL)
 
@@ -46,8 +46,8 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, 10, cfg.RateLimiting.RPS)
 
 	// Observability defaults
-	assert.Equal(t, "info", cfg.Observability.LogLevel)
-	assert.Equal(t, "json", cfg.Observability.LogFormat)
+	assert.Equal(t, LogLevelInfo, cfg.Observability.LogLevel)
+	assert.Equal(t, LogFormatJSON, cfg.Observability.LogFormat)
 	assert.False(t, cfg.Observability.OTELEnabled)
 
 	// Degradation defaults
@@ -60,8 +60,8 @@ func TestLoad_FromEnv(t *testing.T) {
 	os.Setenv("ANALYZER_ADDR", ":9090")
 	os.Setenv("ANALYZER_FETCH_TIMEOUT", "30s")
 	os.Setenv("ANALYZER_CHECK_WORKERS", "50")
-	os.Setenv("ANALYZER_CACHE_MODE", "redis")
-	os.Setenv("ANALYZER_LOG_LEVEL", "debug")
+	os.Setenv("ANALYZER_CACHE_MODE", CacheModeRedis)
+	os.Setenv("ANALYZER_LOG_LEVEL", LogLevelDebug)
 	defer func() {
 		os.Unsetenv("ANALYZER_ADDR")
 		os.Unsetenv("ANALYZER_FETCH_TIMEOUT")
@@ -75,8 +75,8 @@ func TestLoad_FromEnv(t *testing.T) {
 	assert.Equal(t, ":9090", cfg.Server.Addr)
 	assert.Equal(t, 30*time.Second, cfg.Fetching.Timeout)
 	assert.Equal(t, 50, cfg.LinkChecking.Workers)
-	assert.Equal(t, "redis", cfg.Caching.Mode)
-	assert.Equal(t, "debug", cfg.Observability.LogLevel)
+	assert.Equal(t, CacheModeRedis, cfg.Caching.Mode)
+	assert.Equal(t, LogLevelDebug, cfg.Observability.LogLevel)
 }
 
 func TestLoad_InvalidValues_Panic(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
@@ -70,9 +71,9 @@ func Register(name string, factory domain.CollectorFactory) {
 
 // init registers all core collectors
 func init() {
-	Register("htmlversion", &HTMLVersionFactory{})
-	Register("title", &TitleFactory{})
-	Register("headings", &HeadingsFactory{})
-	Register("links", &LinksFactory{})
-	Register("loginform", &LoginFormFactory{})
+	Register(config.CollectorHTMLVersion, &HTMLVersionFactory{})
+	Register(config.CollectorTitle, &TitleFactory{})
+	Register(config.CollectorHeadings, &HeadingsFactory{})
+	Register(config.CollectorLinks, &LinksFactory{})
+	Register(config.CollectorLoginForm, &LoginFormFactory{})
 }
