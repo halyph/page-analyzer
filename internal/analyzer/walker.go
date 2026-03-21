@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 	"golang.org/x/net/html"
 )
@@ -14,26 +15,15 @@ type Walker struct {
 	maxTokens int // Safety limit to prevent infinite loops
 }
 
-// WalkerConfig configures the HTML walker
-type WalkerConfig struct {
-	MaxTokens int // Maximum tokens to process (0 = unlimited, but use default)
-}
-
-// DefaultWalkerConfig returns sensible defaults
-func DefaultWalkerConfig() WalkerConfig {
-	return WalkerConfig{
-		MaxTokens: 1_000_000, // 1 million tokens should handle most pages
-	}
-}
-
 // NewWalker creates a new HTML walker with the given configuration
-func NewWalker(config WalkerConfig) *Walker {
-	if config.MaxTokens <= 0 {
-		config.MaxTokens = 1_000_000
+func NewWalker(cfg config.ProcessingConfig) *Walker {
+	maxTokens := cfg.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 1_000_000
 	}
 
 	return &Walker{
-		maxTokens: config.MaxTokens,
+		maxTokens: maxTokens,
 	}
 }
 

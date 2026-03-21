@@ -152,14 +152,8 @@ func createLinkChecker(cfg config.Config, logger *slog.Logger) *analyzer.LinkChe
 
 func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyzer.LinkCheckWorkerPool) *analyzer.Service {
 	serviceCfg := analyzer.ServiceConfig{
-		Fetcher: analyzer.FetcherConfig{
-			Timeout:     cfg.Fetching.Timeout,
-			MaxBodySize: cfg.Fetching.MaxBodySize,
-			UserAgent:   cfg.Fetching.UserAgent,
-		},
-		Walker: analyzer.WalkerConfig{
-			MaxTokens: cfg.Processing.MaxTokens,
-		},
+		Fetcher:         cfg.Fetching,
+		Walker:          cfg.Processing,
 		LinkCheckerPool: linkChecker,
 		Cache:           cacheImpl,
 		CacheTTL:        cfg.Caching.TTL,

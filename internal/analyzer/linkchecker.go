@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
@@ -48,37 +49,37 @@ type LinkCheckConfig struct {
 	JobWorkers int           // Concurrent checks within a single job
 }
 
-// DefaultLinkCheckConfig returns sensible defaults
-func DefaultLinkCheckConfig() LinkCheckConfig {
+// NewLinkCheckConfigFromGlobal converts global config to LinkCheckConfig
+func NewLinkCheckConfigFromGlobal(cfg config.LinkCheckingConfig, userAgent string) LinkCheckConfig {
 	return LinkCheckConfig{
-		Workers:    20,
-		QueueSize:  100,
-		Timeout:    5 * time.Second,
-		JobMaxAge:  10 * time.Minute,
-		UserAgent:  "PageAnalyzer/1.0",
-		JobWorkers: 10,
+		Workers:    cfg.Workers,
+		QueueSize:  cfg.QueueSize,
+		Timeout:    cfg.CheckTimeout,
+		JobMaxAge:  10 * time.Minute, // Use reasonable default
+		UserAgent:  userAgent,
+		JobWorkers: cfg.JobWorkers,
 	}
 }
 
 // NewLinkCheckWorkerPool creates a new worker pool for link checking
-func NewLinkCheckWorkerPool(config LinkCheckConfig) *LinkCheckWorkerPool {
-	if config.Workers <= 0 {
-		config.Workers = 20
+func NewLinkCheckWorkerPool(cfg LinkCheckConfig) *LinkCheckWorkerPool {
+	if cfg.Workers <= 0 {
+		cfg.Workers = 20
 	}
-	if config.QueueSize <= 0 {
-		config.QueueSize = 100
+	if cfg.QueueSize <= 0 {
+		cfg.QueueSize = 100
 	}
-	if config.Timeout <= 0 {
-		config.Timeout = 5 * time.Second
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = 5 * time.Second
 	}
-	if config.JobMaxAge <= 0 {
-		config.JobMaxAge = 10 * time.Minute
+	if cfg.JobMaxAge <= 0 {
+		cfg.JobMaxAge = 10 * time.Minute
 	}
-	if config.UserAgent == "" {
-		config.UserAgent = "PageAnalyzer/1.0"
+	if cfg.UserAgent == "" {
+		cfg.UserAgent = "PageAnalyzer/1.0"
 	}
-	if config.JobWorkers <= 0 {
-		config.JobWorkers = 10
+	if cfg.JobWorkers <= 0 {
+		cfg.JobWorkers = 10
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -87,16 +88,16 @@ func NewLinkCheckWorkerPool(config LinkCheckConfig) *LinkCheckWorkerPool {
 	jar, _ := cookiejar.New(nil)
 
 	return &LinkCheckWorkerPool{
-		workers:     config.Workers,
-		jobs:        make(chan *domain.LinkCheckJob, config.QueueSize),
-		timeout:     config.Timeout,
-		maxAge:      config.JobMaxAge,
-		userAgent:   config.UserAgent,
+		workers:     cfg.Workers,
+		jobs:        make(chan *domain.LinkCheckJob, cfg.QueueSize),
+		timeout:     cfg.Timeout,
+		maxAge:      cfg.JobMaxAge,
+		userAgent:   cfg.UserAgent,
 		stopCleanup: make(chan struct{}),
 		ctx:         ctx,
 		cancel:      cancel,
 		client: &http.Client{
-			Timeout: config.Timeout,
+			Timeout: cfg.Timeout,
 			Jar:     jar,
 			Transport: &http.Transport{
 				MaxIdleConns:        100,

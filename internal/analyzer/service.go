@@ -6,6 +6,7 @@ import (
 
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
 	"github.com/halyph/page-analyzer/internal/cache"
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
@@ -19,40 +20,32 @@ type Service struct {
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
-	Fetcher         FetcherConfig
-	Walker          WalkerConfig
+	Fetcher         config.FetchingConfig
+	Walker          config.ProcessingConfig
 	LinkChecker     *LinkCheckConfig     // Optional: config to create new link checker
 	LinkCheckerPool *LinkCheckWorkerPool // Optional: use existing link checker
 	Cache           cache.Cache          // Optional: nil means no caching
 	CacheTTL        time.Duration        // Cache TTL (default: 1 hour)
 }
 
-// DefaultServiceConfig returns sensible defaults
-func DefaultServiceConfig() ServiceConfig {
-	return ServiceConfig{
-		Fetcher: DefaultFetcherConfig(),
-		Walker:  DefaultWalkerConfig(),
-	}
-}
-
 // NewService creates a new analyzer service
-func NewService(config ServiceConfig) *Service {
+func NewService(cfg ServiceConfig) *Service {
 	s := &Service{
-		fetcher: NewFetcher(config.Fetcher),
-		walker:  NewWalker(config.Walker),
+		fetcher: NewFetcher(cfg.Fetcher),
+		walker:  NewWalker(cfg.Walker),
 	}
 
 	// Optional: use existing link checker pool or create new one
-	if config.LinkCheckerPool != nil {
-		s.linkChecker = config.LinkCheckerPool
-	} else if config.LinkChecker != nil {
-		s.linkChecker = NewLinkCheckWorkerPool(*config.LinkChecker)
+	if cfg.LinkCheckerPool != nil {
+		s.linkChecker = cfg.LinkCheckerPool
+	} else if cfg.LinkChecker != nil {
+		s.linkChecker = NewLinkCheckWorkerPool(*cfg.LinkChecker)
 		s.linkChecker.Start()
 	}
 
 	// Optional: use provided cache or default to no-op
-	if config.Cache != nil {
-		s.cache = config.Cache
+	if cfg.Cache != nil {
+		s.cache = cfg.Cache
 	} else {
 		s.cache = cache.NewNoOpCache()
 	}

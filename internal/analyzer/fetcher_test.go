@@ -22,7 +22,7 @@ func TestFetcher_FetchSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL)
 
 	if err != nil {
@@ -43,7 +43,7 @@ func TestFetcher_FetchSuccess(t *testing.T) {
 }
 
 func TestFetcher_EmptyURL(t *testing.T) {
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), "")
 
 	if err != domain.ErrEmptyURL {
@@ -52,7 +52,7 @@ func TestFetcher_EmptyURL(t *testing.T) {
 }
 
 func TestFetcher_InvalidURL(t *testing.T) {
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), "://invalid")
 
 	if err == nil {
@@ -70,7 +70,7 @@ func TestFetcher_404NotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
 	if err == nil {
@@ -93,7 +93,7 @@ func TestFetcher_500ServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
 	if err == nil {
@@ -117,7 +117,7 @@ func TestFetcher_Redirect(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL+"/start")
 
 	if err != nil {
@@ -141,7 +141,7 @@ func TestFetcher_TooManyRedirects(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL+"/redirect")
 
 	if err == nil {
@@ -158,7 +158,7 @@ func TestFetcher_Timeout(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with very short timeout
-	config := DefaultFetcherConfig()
+	config := testFetchingConfig()
 	config.Timeout = 10 * time.Millisecond
 	fetcher := NewFetcher(config)
 
@@ -176,7 +176,7 @@ func TestFetcher_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 
 	// Create context that cancels immediately
 	ctx, cancel := context.WithCancel(context.Background())
@@ -199,7 +199,7 @@ func TestFetcher_BodySizeLimit(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with small limit
-	config := DefaultFetcherConfig()
+	config := testFetchingConfig()
 	config.MaxBodySize = 100 * 1024 // 100KB
 	fetcher := NewFetcher(config)
 
@@ -223,7 +223,7 @@ func TestFetcher_UserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := DefaultFetcherConfig()
+	config := testFetchingConfig()
 	config.UserAgent = "CustomBot/2.0"
 	fetcher := NewFetcher(config)
 
@@ -245,7 +245,7 @@ func TestFetcher_Headers(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher(DefaultFetcherConfig())
+	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL)
 
 	if err != nil {
@@ -261,18 +261,5 @@ func TestFetcher_Headers(t *testing.T) {
 	}
 }
 
-func TestDefaultFetcherConfig(t *testing.T) {
-	config := DefaultFetcherConfig()
-
-	if config.Timeout != 15*time.Second {
-		t.Errorf("Timeout = %v, want 15s", config.Timeout)
-	}
-
-	if config.MaxBodySize != 10*1024*1024 {
-		t.Errorf("MaxBodySize = %d, want 10MB", config.MaxBodySize)
-	}
-
-	if config.UserAgent != "PageAnalyzer/1.0" {
-		t.Errorf("UserAgent = %s, want PageAnalyzer/1.0", config.UserAgent)
-	}
-}
+// Test removed: TestDefaultFetcherConfig
+// Config defaults are now in internal/config package and tested there

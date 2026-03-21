@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
@@ -17,27 +18,11 @@ type Fetcher struct {
 	userAgent   string
 }
 
-// FetcherConfig configures the HTTP fetcher
-type FetcherConfig struct {
-	Timeout     time.Duration // Request timeout
-	MaxBodySize int64         // Maximum response body size
-	UserAgent   string        // User-Agent header
-}
-
-// DefaultFetcherConfig returns sensible defaults
-func DefaultFetcherConfig() FetcherConfig {
-	return FetcherConfig{
-		Timeout:     15 * time.Second,
-		MaxBodySize: 10 * 1024 * 1024, // 10MB
-		UserAgent:   "PageAnalyzer/1.0",
-	}
-}
-
 // NewFetcher creates a new HTTP fetcher with the given configuration
-func NewFetcher(config FetcherConfig) *Fetcher {
+func NewFetcher(cfg config.FetchingConfig) *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
-			Timeout: config.Timeout,
+			Timeout: cfg.Timeout,
 			Transport: &http.Transport{
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 10,
@@ -51,8 +36,8 @@ func NewFetcher(config FetcherConfig) *Fetcher {
 				return nil
 			},
 		},
-		maxBodySize: config.MaxBodySize,
-		userAgent:   config.UserAgent,
+		maxBodySize: cfg.MaxBodySize,
+		userAgent:   cfg.UserAgent,
 	}
 }
 

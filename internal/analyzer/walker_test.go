@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
+	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
 )
 
 func TestWalker_Simple(t *testing.T) {
 	html := loadFixture(t, "walker_simple.html")
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	// Create collectors
@@ -43,7 +44,7 @@ func TestWalker_Simple(t *testing.T) {
 func TestWalker_CompleteAnalysis(t *testing.T) {
 	html := loadFixture(t, "walker_complete.html")
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	linksCollector, _ := collectors.NewLinksCollector("https://example.com", 10000)
@@ -88,7 +89,7 @@ func TestWalker_CompleteAnalysis(t *testing.T) {
 }
 
 func TestWalker_EmptyBody(t *testing.T) {
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	err := walker.Walk([]byte{}, []domain.Collector{}, result)
@@ -101,7 +102,7 @@ func TestWalker_MalformedHTML(t *testing.T) {
 	// Malformed HTML should still be parseable (HTML parser is forgiving)
 	html := loadFixture(t, "walker_malformed.html")
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	colls := []domain.Collector{
@@ -137,7 +138,7 @@ func TestWalker_LargeDocument(t *testing.T) {
 	}
 	sb.WriteString("</body></html>")
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	colls := []domain.Collector{
@@ -163,8 +164,8 @@ func TestWalker_MaxTokensExceeded(t *testing.T) {
 	}
 	sb.WriteString("</body></html>")
 
-	config := WalkerConfig{MaxTokens: 1000}
-	walker := NewWalker(config)
+	cfg := config.ProcessingConfig{MaxTokens: 1000}
+	walker := NewWalker(cfg)
 	result := domain.NewAnalysisResult("https://example.com")
 
 	err := walker.Walk([]byte(sb.String()), []domain.Collector{}, result)
@@ -180,7 +181,7 @@ func TestWalker_MaxTokensExceeded(t *testing.T) {
 func TestWalker_NoCollectors(t *testing.T) {
 	html := `<html><head><title>Test</title></head></html>`
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	// Walk with no collectors should complete without error
@@ -198,7 +199,7 @@ func TestWalker_NoCollectors(t *testing.T) {
 func TestWalker_SingleCollector(t *testing.T) {
 	html := `<html><head><title>Single</title></head></html>`
 
-	walker := NewWalker(DefaultWalkerConfig())
+	walker := NewWalker(testProcessingConfig())
 	result := domain.NewAnalysisResult("https://example.com")
 
 	colls := []domain.Collector{
@@ -216,7 +217,7 @@ func TestWalker_SingleCollector(t *testing.T) {
 }
 
 func TestDefaultWalkerConfig(t *testing.T) {
-	config := DefaultWalkerConfig()
+	config := testProcessingConfig()
 
 	if config.MaxTokens != 1_000_000 {
 		t.Errorf("MaxTokens = %d, want 1000000", config.MaxTokens)
@@ -224,8 +225,8 @@ func TestDefaultWalkerConfig(t *testing.T) {
 }
 
 func TestNewWalker_ZeroMaxTokens(t *testing.T) {
-	config := WalkerConfig{MaxTokens: 0}
-	walker := NewWalker(config)
+	processingCfg := config.ProcessingConfig{MaxTokens: 0}
+	walker := NewWalker(processingCfg)
 
 	if walker.maxTokens != 1_000_000 {
 		t.Errorf("maxTokens = %d, want 1000000 (default)", walker.maxTokens)
@@ -233,8 +234,8 @@ func TestNewWalker_ZeroMaxTokens(t *testing.T) {
 }
 
 func TestNewWalker_NegativeMaxTokens(t *testing.T) {
-	config := WalkerConfig{MaxTokens: -100}
-	walker := NewWalker(config)
+	cfg := config.ProcessingConfig{MaxTokens: -100}
+	walker := NewWalker(cfg)
 
 	if walker.maxTokens != 1_000_000 {
 		t.Errorf("maxTokens = %d, want 1000000 (default)", walker.maxTokens)

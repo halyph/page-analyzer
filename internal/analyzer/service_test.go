@@ -20,7 +20,7 @@ func TestService_AnalyzeSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -79,7 +79,7 @@ func TestService_AnalyzeWithLoginForm(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -103,7 +103,7 @@ func TestService_AnalyzeComplexPage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -160,7 +160,7 @@ func TestService_AnalyzeRedirect(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL + "/start",
 		Options: domain.DefaultOptions(),
@@ -187,7 +187,7 @@ func TestService_Analyze404(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -209,7 +209,7 @@ func TestService_Analyze404(t *testing.T) {
 }
 
 func TestService_AnalyzeInvalidURL(t *testing.T) {
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     "://invalid",
 		Options: domain.DefaultOptions(),
@@ -226,7 +226,7 @@ func TestService_AnalyzeInvalidURL(t *testing.T) {
 }
 
 func TestService_AnalyzeEmptyURL(t *testing.T) {
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     "",
 		Options: domain.DefaultOptions(),
@@ -246,7 +246,7 @@ func TestService_AnalyzeMalformedHTML(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -276,7 +276,7 @@ func TestService_AnalyzeEmptyPage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL:     server.URL,
 		Options: domain.DefaultOptions(),
@@ -301,7 +301,7 @@ func TestService_AnalyzeWithMaxLinks(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 	req := domain.AnalysisRequest{
 		URL: server.URL,
 		Options: domain.AnalysisOptions{
@@ -330,7 +330,7 @@ func TestService_AnalyzeWithMaxLinks(t *testing.T) {
 }
 
 func TestDefaultServiceConfig(t *testing.T) {
-	config := DefaultServiceConfig()
+	config := testServiceConfig()
 
 	// Should include default fetcher config
 	if config.Fetcher.Timeout == 0 {
@@ -349,7 +349,7 @@ func TestService_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewService(DefaultServiceConfig())
+	service := NewService(testServiceConfig())
 
 	// Create canceled context
 	ctx, cancel := context.WithCancel(context.Background())

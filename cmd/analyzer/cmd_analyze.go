@@ -83,15 +83,15 @@ func runAnalyze(c *cli.Context) error {
 func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service {
 	memCache := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
 
+	// Override timeout if specified via CLI flag
+	fetchingCfg := cfg.Fetching
+	if c.IsSet("timeout") {
+		fetchingCfg.Timeout = c.Duration("timeout")
+	}
+
 	serviceCfg := analyzer.ServiceConfig{
-		Fetcher: analyzer.FetcherConfig{
-			Timeout:     c.Duration("timeout"),
-			MaxBodySize: cfg.Fetching.MaxBodySize,
-			UserAgent:   cfg.Fetching.UserAgent,
-		},
-		Walker: analyzer.WalkerConfig{
-			MaxTokens: cfg.Processing.MaxTokens,
-		},
+		Fetcher:  fetchingCfg,
+		Walker:   cfg.Processing,
 		Cache:    memCache,
 		CacheTTL: cfg.Caching.TTL,
 	}
