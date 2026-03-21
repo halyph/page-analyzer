@@ -1,5 +1,4 @@
 # Binaries
-bin/
 build/
 .bin/
 *.exe
@@ -12,8 +11,6 @@ build/
 # Test artifacts
 *.test
 *.out
-coverage.out
-coverage.html
 
 # Go workspace file
 go.work
