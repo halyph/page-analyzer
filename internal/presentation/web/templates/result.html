@@ -1,0 +1,142 @@
+{{define "content"}}
+<div class="result-header">
+    <h2>Analysis Results</h2>
+    <a href="/" class="btn-secondary">← Analyze Another</a>
+</div>
+
+{{if .Error}}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{.Error}}
+</div>
+{{else}}
+
+<div class="card">
+    <h3>📊 Overview</h3>
+    <div class="info-grid">
+        <div class="info-item">
+            <span class="label">URL:</span>
+            <span class="value"><a href="{{.Result.URL}}" target="_blank">{{.Result.URL}}</a></span>
+        </div>
+        <div class="info-item">
+            <span class="label">HTML Version:</span>
+            <span class="value">{{.Result.HTMLVersion}}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Page Title:</span>
+            <span class="value">{{if .Result.Title}}{{.Result.Title}}{{else}}<em>(no title)</em>{{end}}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Analyzed:</span>
+            <span class="value">{{.Result.AnalyzedAt.Format "2006-01-02 15:04:05"}}</span>
+        </div>
+        {{if .Result.CacheHit}}
+        <div class="info-item">
+            <span class="label">Cache:</span>
+            <span class="value badge badge-success">Hit ✓</span>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<div class="card">
+    <h3>📑 Headings</h3>
+    <div class="headings-grid">
+        <div class="heading-item"><strong>H1:</strong> {{.Result.Headings.H1}}</div>
+        <div class="heading-item"><strong>H2:</strong> {{.Result.Headings.H2}}</div>
+        <div class="heading-item"><strong>H3:</strong> {{.Result.Headings.H3}}</div>
+        <div class="heading-item"><strong>H4:</strong> {{.Result.Headings.H4}}</div>
+        <div class="heading-item"><strong>H5:</strong> {{.Result.Headings.H5}}</div>
+        <div class="heading-item"><strong>H6:</strong> {{.Result.Headings.H6}}</div>
+    </div>
+    <div class="total-headings">
+        <strong>Total Headings:</strong> {{.Result.Headings.Total}}
+    </div>
+</div>
+
+<div class="card">
+    <h3>🔗 Links</h3>
+    <div class="info-grid">
+        <div class="info-item">
+            <span class="label">Internal Links:</span>
+            <span class="value">{{len .Result.Links.Internal}}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">External Links:</span>
+            <span class="value">{{len .Result.Links.External}}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Total Found:</span>
+            <span class="value">{{.Result.Links.TotalFound}}{{if .Result.Links.Truncated}} <span class="badge badge-warning">truncated</span>{{end}}</span>
+        </div>
+    </div>
+
+    {{if .Result.Links.CheckJobID}}
+    <div id="linkCheckStatus" data-job-id="{{.Result.Links.CheckJobID}}">
+        <div class="alert alert-info">
+            <strong>Link Check Status:</strong> <span id="statusText">{{.Result.Links.CheckStatus}}</span>
+            <div id="checkResults" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+    {{else if .Result.Links.CheckResult}}
+    <div class="link-check-results">
+        <h4>Link Check Results</h4>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="label">Checked:</span>
+                <span class="value">{{.Result.Links.CheckResult.Checked}}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Accessible:</span>
+                <span class="value badge badge-success">{{.Result.Links.CheckResult.Accessible}}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Inaccessible:</span>
+                <span class="value badge badge-error">{{.Result.Links.CheckResult.InaccessibleCount}}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Duration:</span>
+                <span class="value">{{.Result.Links.CheckResult.Duration}}</span>
+            </div>
+        </div>
+
+        {{if .Result.Links.CheckResult.Inaccessible}}
+        <details class="broken-links">
+            <summary>Broken Links ({{len .Result.Links.CheckResult.Inaccessible}})</summary>
+            <ul>
+                {{range .Result.Links.CheckResult.Inaccessible}}
+                <li>
+                    <code>{{.URL}}</code>
+                    <span class="badge badge-error">{{.Reason}}</span>
+                </li>
+                {{end}}
+            </ul>
+        </details>
+        {{end}}
+    </div>
+    {{end}}
+</div>
+
+<div class="card">
+    <h3>🔒 Login Form</h3>
+    <div class="info-item">
+        <span class="label">Has Login Form:</span>
+        <span class="value">
+            {{if .Result.HasLoginForm}}
+            <span class="badge badge-success">Yes ✓</span>
+            {{else}}
+            <span class="badge badge-secondary">No</span>
+            {{end}}
+        </span>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📋 Raw JSON</h3>
+    <details>
+        <summary>View JSON Response</summary>
+        <pre><code>{{.JSON}}</code></pre>
+    </details>
+</div>
+
+{{end}}
+{{end}}

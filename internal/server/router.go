@@ -2,13 +2,15 @@ package server
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/halyph/page-analyzer/internal/presentation/rest"
+	"github.com/halyph/page-analyzer/internal/presentation/web"
 )
 
 // NewRouter creates a new HTTP router with all routes configured
-func NewRouter(handler *rest.Handler, logger *slog.Logger) *chi.Mux {
+func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, logger *slog.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -16,16 +18,23 @@ func NewRouter(handler *rest.Handler, logger *slog.Logger) *chi.Mux {
 	r.Use(Logger(logger))
 	r.Use(CORS)
 
+	// Web UI routes
+	r.Get("/", webHandler.HandleIndex)
+	r.Post("/analyze", webHandler.HandleAnalyze)
+
+	// Static files - serve from embedded FS
+	r.Handle("/static/*", http.StripPrefix("/static", webHandler.StaticFS()))
+
 	// API routes
 	r.Route("/api", func(r chi.Router) {
 		// Health check
-		r.Get("/health", handler.HandleHealth)
+		r.Get("/health", restHandler.HandleHealth)
 
 		// Analysis
-		r.Post("/analyze", handler.HandleAnalyze)
+		r.Post("/analyze", restHandler.HandleAnalyze)
 
 		// Jobs (link check results)
-		r.Get("/jobs/{id}", handler.HandleGetJob)
+		r.Get("/jobs/{id}", restHandler.HandleGetJob)
 	})
 
 	return r

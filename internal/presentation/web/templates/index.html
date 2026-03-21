@@ -1,0 +1,65 @@
+{{define "content"}}
+<div class="hero">
+    <h2>Analyze Any Webpage</h2>
+    <p>Extract HTML version, title, headings, links, and detect login forms</p>
+</div>
+
+<div class="card">
+    <form id="analyzeForm" action="/analyze" method="POST">
+        <div class="form-group">
+            <label for="url">Website URL</label>
+            <input
+                type="url"
+                id="url"
+                name="url"
+                placeholder="https://example.com"
+                required
+                autofocus
+            >
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="checkLinks" id="checkLinks">
+                Check link accessibility (async)
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label for="maxLinks">Max Links to Collect</label>
+            <input
+                type="number"
+                id="maxLinks"
+                name="maxLinks"
+                value="100"
+                min="1"
+                max="10000"
+            >
+        </div>
+
+        <button type="submit" class="btn-primary">Analyze</button>
+    </form>
+</div>
+
+<div class="features">
+    <h3>Features</h3>
+    <div class="feature-grid">
+        <div class="feature">
+            <h4>📄 HTML Analysis</h4>
+            <p>Version detection, title, headings (H1-H6)</p>
+        </div>
+        <div class="feature">
+            <h4>🔗 Link Analysis</h4>
+            <p>Internal/external classification, accessibility checking</p>
+        </div>
+        <div class="feature">
+            <h4>🔒 Form Detection</h4>
+            <p>Identifies login forms with password fields</p>
+        </div>
+        <div class="feature">
+            <h4>⚡ Fast & Cached</h4>
+            <p>Results cached for instant retrieval</p>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -12,6 +12,7 @@ import (
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/presentation/rest"
+	"github.com/halyph/page-analyzer/internal/presentation/web"
 	"github.com/halyph/page-analyzer/internal/server"
 	"github.com/spf13/cobra"
 )
@@ -84,8 +85,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Create REST handler
 	restHandler := rest.NewHandler(analyzerService, linkChecker, logger)
 
+	// Create Web UI handler
+	webHandler, err := web.NewHandler(analyzerService, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create web handler: %w", err)
+	}
+
 	// Create router
-	router := server.NewRouter(restHandler, logger)
+	router := server.NewRouter(restHandler, webHandler, logger)
 
 	// Create server
 	serverCfg := server.Config{
