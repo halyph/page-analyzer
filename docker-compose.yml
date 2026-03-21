@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Page Analyzer Application
+  analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: page-analyzer
+    ports:
+      - "8080:8080"
+    environment:
+      - ANALYZER_ADDR=:8080
+      - ANALYZER_LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - analyzer-network
+
+  # Redis (optional - for distributed caching)
+  redis:
+    image: redis:7-alpine
+    container_name: page-analyzer-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - analyzer-network
+
+networks:
+  analyzer-network:
+    driver: bridge
+
+volumes:
+  redis-data:
