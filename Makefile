@@ -107,6 +107,13 @@ install: download ## Install useful CLI tools
 	@echo Installing tools from $(TOOLS)/tools.go
 	@mkdir -p $(BIN)
 	@cd $(TOOLS) && cat tools.go | grep _ | awk -F'"' '{print $$2}' | GOBIN=$(BIN) xargs -tI % go install %
+	@touch $(BIN)/.installed
+
+.PHONY: ensure-tools
+ensure-tools: ## Ensure tools are installed (runs install only if needed)
+	@if [ ! -f $(BIN)/.installed ]; then \
+		$(MAKE) install; \
+	fi
 ## END of tools installation
 
 ## BEGIN of quality gates
@@ -124,11 +131,11 @@ cover: run-test ## Test and code coverage
 	go tool cover -html=$(COVER_FILE)
 
 .PHONY: fix-lint
-fix-lint: ## Auto-fix linting issues
+fix-lint: ensure-tools ## Auto-fix linting issues
 	$(BIN_PATH) golangci-lint run --fix -v ./...
 
 .PHONY: run-lint
-run-lint:
+run-lint: ensure-tools
 	$(BIN_PATH) golangci-lint --version
 	$(BIN_PATH) golangci-lint run $(PACKAGES)
 
@@ -141,7 +148,7 @@ run-test-integration: build-dir ## Run all tests including integration tests (re
 	go test $(TEST_FLAGS_INTEG) $(PACKAGES)
 
 .PHONY: generate
-generate: ## Run go generators
+generate: ensure-tools ## Run go generators
 	$(BIN_PATH) go generate ./...
 
 .PHONY: git-status
