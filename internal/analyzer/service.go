@@ -9,6 +9,8 @@ import (
 	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Service is the main analyzer that orchestrates fetching, parsing, and collecting
@@ -82,46 +84,73 @@ func (s *Service) Stop() {
 
 // Analyze performs a complete analysis of a webpage
 func (s *Service) Analyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
+	ctx, span := observability.StartSpan(ctx, "analyzer.Analyze",
+		observability.AttrAnalyzerURL.String(req.URL),
+		attribute.String("check_links", string(req.Options.CheckLinks)),
+	)
+	defer span.End()
+
 	// Try cache first
 	if result, found := s.tryCache(ctx, req.URL); found {
+		observability.SetSpanAttributes(span, observability.AttrAnalyzerCached.Bool(true))
+
 		// Cache hit with no link checking needed
 		if req.Options.CheckLinks == domain.LinkCheckDisabled {
 			return result, nil
 		}
 		// Use cached result but perform link check
-		s.performLinkCheck(result, req)
+		s.performLinkCheck(ctx, result, req)
 		return result, nil
 	}
+
+	observability.SetSpanAttributes(span, observability.AttrAnalyzerCached.Bool(false))
 
 	// Cache miss - fetch and analyze
 	result, err := s.fetchAndAnalyze(ctx, req)
 	if err != nil {
+		observability.RecordError(span, err)
 		return nil, err
 	}
 
 	// Optional: check links
-	s.performLinkCheck(result, req)
+	s.performLinkCheck(ctx, result, req)
 
 	return result, nil
 }
 
 // tryCache attempts to retrieve a cached result
 func (s *Service) tryCache(ctx context.Context, url string) (*domain.AnalysisResult, bool) {
+	ctx, span := observability.StartSpan(ctx, "cache.GetHTML",
+		observability.AttrCacheOperation.String("get"),
+	)
+	defer span.End()
+
 	cached, err := s.cache.GetHTML(ctx, url)
 	if err != nil {
+		if err == cache.ErrCacheMiss {
+			observability.SetSpanAttributes(span, observability.AttrCacheHit.Bool(false))
+		} else {
+			observability.RecordError(span, err)
+		}
 		return nil, false
 	}
+
+	observability.SetSpanAttributes(span, observability.AttrCacheHit.Bool(true))
 	return cached, true
 }
 
 // fetchAndAnalyze fetches a webpage and performs HTML analysis
 func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisRequest) (*domain.AnalysisResult, error) {
+	ctx, span := observability.StartSpan(ctx, "analyzer.fetchAndAnalyze")
+	defer span.End()
+
 	// Initialize result
 	result := domain.NewAnalysisResult(req.URL)
 
 	// Fetch the webpage
 	fetchResult, err := s.fetcher.Fetch(ctx, req.URL)
 	if err != nil {
+		observability.RecordError(span, err)
 		return nil, err
 	}
 
@@ -131,29 +160,48 @@ func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisReques
 	// Build collectors based on configuration
 	colls, err := s.buildCollectors(req)
 	if err != nil {
+		observability.RecordError(span, err)
 		return nil, err
 	}
 
 	// Walk HTML and collect data
+	walkCtx, walkSpan := observability.StartSpan(ctx, "walker.Walk",
+		attribute.Int("collectors.count", len(colls)),
+	)
 	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
+		observability.RecordError(walkSpan, err)
+		walkSpan.End()
 		return nil, domain.ErrParsingFailed(req.URL, err)
 	}
+	walkSpan.End()
 
 	// Store in cache (before link checking)
-	if err := s.cache.SetHTML(ctx, result.URL, result, s.htmlTTL); err != nil && s.logger != nil {
-		s.logger.Warn("failed to cache HTML result",
-			"url", result.URL,
-			"error", err)
+	cacheCtx, cacheSpan := observability.StartSpan(walkCtx, "cache.SetHTML",
+		observability.AttrCacheOperation.String("set"),
+	)
+	if err := s.cache.SetHTML(cacheCtx, result.URL, result, s.htmlTTL); err != nil {
+		observability.RecordError(cacheSpan, err)
+		if s.logger != nil {
+			s.logger.Warn("failed to cache HTML result",
+				"url", result.URL,
+				"error", err)
+		}
 	}
+	cacheSpan.End()
 
 	return result, nil
 }
 
 // performLinkCheck performs link checking if configured
-func (s *Service) performLinkCheck(result *domain.AnalysisResult, req domain.AnalysisRequest) {
+func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisResult, req domain.AnalysisRequest) {
 	if s.linkChecker == nil || req.Options.CheckLinks == domain.LinkCheckDisabled {
 		return
 	}
+
+	_, span := observability.StartSpan(ctx, "linkChecker.Submit",
+		observability.AttrLinkCheckerURLCount.Int(len(result.Links.Internal)+len(result.Links.External)),
+	)
+	defer span.End()
 
 	// Combine internal and external links for checking
 	allLinks := append([]string{}, result.Links.Internal...)

@@ -9,6 +9,8 @@ import (
 
 	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Fetcher retrieves webpage content via HTTP
@@ -41,14 +43,23 @@ func NewFetcher(cfg config.FetchingConfig) *Fetcher {
 
 // Fetch retrieves the content of a URL
 func (f *Fetcher) Fetch(ctx context.Context, url string) (*domain.FetchResult, error) {
+	ctx, span := observability.StartSpan(ctx, "fetcher.Fetch",
+		observability.AttrHTTPURL.String(url),
+		observability.AttrHTTPMethod.String("GET"),
+	)
+	defer span.End()
+
 	// Validate URL
 	if url == "" {
-		return nil, domain.ErrEmptyURL
+		err := domain.ErrEmptyURL
+		observability.RecordError(span, err)
+		return nil, err
 	}
 
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		observability.RecordError(span, err)
 		return nil, domain.ErrInvalidURLWithReason(url, err)
 	}
 
@@ -61,15 +72,24 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (*domain.FetchResult, e
 	if err != nil {
 		// Check if it's a timeout
 		if ctx.Err() == context.DeadlineExceeded {
-			return nil, domain.ErrTimeoutWithContext(url, f.client.Timeout.String())
+			err := domain.ErrTimeoutWithContext(url, f.client.Timeout.String())
+			observability.RecordError(span, err)
+			return nil, err
 		}
-		return nil, domain.ErrConnectionFailed(url, err)
+		err := domain.ErrConnectionFailed(url, err)
+		observability.RecordError(span, err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
+	// Record status code
+	observability.SetSpanAttributes(span, observability.AttrHTTPStatusCode.Int(resp.StatusCode))
+
 	// Check status code
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, domain.ErrFetchFailedWithStatus(url, resp.StatusCode, resp.Status)
+		err := domain.ErrFetchFailedWithStatus(url, resp.StatusCode, resp.Status)
+		observability.RecordError(span, err)
+		return nil, err
 	}
 
 	// Limit body size
@@ -87,8 +107,16 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (*domain.FetchResult, e
 
 	// Check if body exceeded limit
 	if int64(len(body)) > f.maxBodySize {
-		return nil, domain.ErrBodyTooLargeWithSize(url, int64(len(body)), f.maxBodySize)
+		err := domain.ErrBodyTooLargeWithSize(url, int64(len(body)), f.maxBodySize)
+		observability.RecordError(span, err)
+		return nil, err
 	}
+
+	// Record body size
+	observability.SetSpanAttributes(span,
+		attribute.Int("http.response.body.size", len(body)),
+		attribute.String("http.response.content_type", resp.Header.Get("Content-Type")),
+	)
 
 	// Extract headers
 	headers := make(map[string]string)
@@ -98,8 +126,14 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (*domain.FetchResult, e
 		}
 	}
 
+	finalURL := resp.Request.URL.String()
+	if finalURL != url {
+		// Record redirect
+		observability.SetSpanAttributes(span, attribute.String("http.redirect.final_url", finalURL))
+	}
+
 	return &domain.FetchResult{
-		URL:         resp.Request.URL.String(), // Final URL after redirects
+		URL:         finalURL, // Final URL after redirects
 		StatusCode:  resp.StatusCode,
 		ContentType: resp.Header.Get("Content-Type"),
 		Body:        body,
