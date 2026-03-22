@@ -41,7 +41,7 @@ func Load() Config {
 		Observability: ObservabilityConfig{
 			LogLevel:       envString("ANALYZER_LOG_LEVEL", LogLevelInfo),
 			LogFormat:      envString("ANALYZER_LOG_FORMAT", LogFormatJSON),
-			OTELEnabled:    envBool("ANALYZER_OTEL_ENABLED", false),
+			TracingEnabled: envBool("ANALYZER_TRACING_ENABLED", false),
 			OTELEndpoint:   envString("ANALYZER_OTEL_ENDPOINT", "localhost:4318"),
 			MetricsEnabled: envBool("ANALYZER_METRICS_ENABLED", true),
 		},
@@ -103,7 +103,7 @@ type CachingConfig struct {
 type ObservabilityConfig struct {
 	LogLevel       string // debug, info, warn, error
 	LogFormat      string // json, text
-	OTELEnabled    bool
-	OTELEndpoint   string
-	MetricsEnabled bool
+	TracingEnabled bool   // Enable OpenTelemetry tracing
+	OTELEndpoint   string // OTLP endpoint for traces and metrics
+	MetricsEnabled bool   // Enable OpenTelemetry metrics
 }

@@ -43,7 +43,7 @@ func TestLoad_Defaults(t *testing.T) {
 	// Observability defaults
 	assert.Equal(t, LogLevelInfo, cfg.Observability.LogLevel)
 	assert.Equal(t, LogFormatJSON, cfg.Observability.LogFormat)
-	assert.False(t, cfg.Observability.OTELEnabled)
+	assert.False(t, cfg.Observability.TracingEnabled)
 }
 
 func TestLoad_FromEnv(t *testing.T) {
@@ -78,7 +78,7 @@ func TestLoad_InvalidValues_Panic(t *testing.T) {
 	}{
 		{"invalid_int", "ANALYZER_CHECK_WORKERS", "invalid"},
 		{"invalid_int64", "ANALYZER_MAX_BODY_SIZE", "not-a-number"},
-		{"invalid_bool", "ANALYZER_OTEL_ENABLED", "maybe"},
+		{"invalid_bool", "ANALYZER_TRACING_ENABLED", "maybe"},
 		{"invalid_duration", "ANALYZER_PAGE_CACHE_TTL", "forever"},
 	}
 
@@ -111,11 +111,11 @@ func TestLoad_BooleanParsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("ANALYZER_OTEL_ENABLED", tt.value)
-			defer os.Unsetenv("ANALYZER_OTEL_ENABLED")
+			os.Setenv("ANALYZER_TRACING_ENABLED", tt.value)
+			defer os.Unsetenv("ANALYZER_TRACING_ENABLED")
 
 			cfg := Load()
-			assert.Equal(t, tt.expected, cfg.Observability.OTELEnabled)
+			assert.Equal(t, tt.expected, cfg.Observability.TracingEnabled)
 		})
 	}
 }

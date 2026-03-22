@@ -212,7 +212,7 @@ demo-run: build ## Run analyzer locally with OTEL enabled
 	@echo "  Jaeger UI:      ${YELLOW}http://localhost:16686${RESET}"
 	@echo "  Grafana:        ${YELLOW}http://localhost:3000${RESET}"
 	@echo ""
-	ANALYZER_OTEL_ENABLED=true \
+	ANALYZER_TRACING_ENABLED=true \
 	ANALYZER_OTEL_ENDPOINT=localhost:4318 \
 	ANALYZER_METRICS_ENABLED=true \
 	ANALYZER_CACHE_MODE=redis \

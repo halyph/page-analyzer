@@ -67,7 +67,7 @@ func runServe(c *cli.Context) error {
 		ServiceName:    "page-analyzer",
 		ServiceVersion: Version,
 		Endpoint:       cfg.Observability.OTELEndpoint,
-		Enabled:        cfg.Observability.OTELEnabled,
+		Enabled:        cfg.Observability.TracingEnabled,
 		Logger:         logger,
 	})
 	if err != nil {
