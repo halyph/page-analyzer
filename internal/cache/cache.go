@@ -16,6 +16,14 @@ var (
 	ErrCacheUnavailable = errors.New("cache unavailable")
 )
 
+// Default TTL values for different cache entry types
+const (
+	DefaultHTMLCacheTTL     = 1 * time.Hour
+	DefaultLinkCheckTTL     = 5 * time.Minute
+	DefaultCachedLinkTTL    = 5 * time.Minute
+	DefaultMultiBackfillTTL = 1 * time.Hour
+)
+
 // Cache defines the interface for caching analysis results
 type Cache interface {
 	// GetHTML retrieves cached HTML analysis result
@@ -60,31 +68,4 @@ type CacheStats struct {
 	Evictions   int64
 	HitRate     float64
 	AvgItemSize int64
-}
-
-// CacheConfig configures cache behavior
-type CacheConfig struct {
-	Type     CacheType     // "memory", "redis", "multi", "disabled"
-	MaxSize  int           // Max entries for memory cache
-	TTL      time.Duration // Default TTL
-	RedisURL string        // Redis connection URL
-}
-
-// CacheType defines the type of cache implementation
-type CacheType string
-
-const (
-	CacheTypeMemory   CacheType = "memory"
-	CacheTypeRedis    CacheType = "redis"
-	CacheTypeMulti    CacheType = "multi"
-	CacheTypeDisabled CacheType = "disabled"
-)
-
-// DefaultCacheConfig returns sensible defaults
-func DefaultCacheConfig() CacheConfig {
-	return CacheConfig{
-		Type:    CacheTypeMemory,
-		MaxSize: 100,
-		TTL:     1 * time.Hour,
-	}
 }

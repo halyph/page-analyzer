@@ -21,8 +21,8 @@ func NewMultiCache(l1, l2 Cache) *MultiCache {
 	return &MultiCache{
 		l1:              l1,
 		l2:              l2,
-		backfillTTL:     1 * time.Hour,   // Default for HTML analysis
-		linkBackfillTTL: 5 * time.Minute, // Default for link checks
+		backfillTTL:     DefaultMultiBackfillTTL,
+		linkBackfillTTL: DefaultLinkCheckTTL,
 	}
 }
 

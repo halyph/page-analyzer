@@ -84,6 +84,20 @@ func redisGet[T any](rc *RedisCache, ctx context.Context, key string) (*T, error
 	return &result, nil
 }
 
+// redisSet is a generic helper for marshaling and storing cached data
+func redisSet[T any](rc *RedisCache, ctx context.Context, key string, data T, ttl time.Duration) error {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("marshal failed: %w", err)
+	}
+
+	if err := rc.client.Set(ctx, key, bytes, ttl).Err(); err != nil {
+		return fmt.Errorf("redis set failed: %w", err)
+	}
+
+	return nil
+}
+
 // GetHTML retrieves cached HTML analysis result
 func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
 	return redisGet[domain.AnalysisResult](rc, ctx, htmlKey(url))
@@ -94,18 +108,7 @@ func (rc *RedisCache) SetHTML(ctx context.Context, url string, result *domain.An
 	if ttl <= 0 {
 		ttl = rc.ttl
 	}
-
-	key := htmlKey(url)
-	data, err := json.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("marshal failed: %w", err)
-	}
-
-	if err := rc.client.Set(ctx, key, data, ttl).Err(); err != nil {
-		return fmt.Errorf("redis set failed: %w", err)
-	}
-
-	return nil
+	return redisSet(rc, ctx, htmlKey(url), result, ttl)
 }
 
 // GetLinkCheck retrieves cached link check result
@@ -116,20 +119,9 @@ func (rc *RedisCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.L
 // SetLinkCheck stores link check result in cache
 func (rc *RedisCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
 	if ttl <= 0 {
-		ttl = 5 * time.Minute // Shorter TTL for link checks
+		ttl = DefaultLinkCheckTTL
 	}
-
-	key := linkCheckKey(jobID)
-	data, err := json.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("marshal failed: %w", err)
-	}
-
-	if err := rc.client.Set(ctx, key, data, ttl).Err(); err != nil {
-		return fmt.Errorf("redis set failed: %w", err)
-	}
-
-	return nil
+	return redisSet(rc, ctx, linkCheckKey(jobID), result, ttl)
 }
 
 // GetCachedLink retrieves a cached individual link check result
@@ -140,20 +132,9 @@ func (rc *RedisCache) GetCachedLink(ctx context.Context, url string) (*domain.Ca
 // SetCachedLink stores an individual link check result in cache
 func (rc *RedisCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
 	if ttl <= 0 {
-		ttl = 5 * time.Minute // Short TTL for individual link checks
+		ttl = DefaultCachedLinkTTL
 	}
-
-	key := cachedLinkKey(url)
-	data, err := json.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("marshal failed: %w", err)
-	}
-
-	if err := rc.client.Set(ctx, key, data, ttl).Err(); err != nil {
-		return fmt.Errorf("redis set failed: %w", err)
-	}
-
-	return nil
+	return redisSet(rc, ctx, cachedLinkKey(url), result, ttl)
 }
 
 // Delete removes a cached entry

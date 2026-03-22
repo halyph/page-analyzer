@@ -72,13 +72,8 @@ func NewMemoryCache(maxSize int, ttl time.Duration) *MemoryCache {
 	return mc
 }
 
-// GetHTML retrieves cached HTML analysis result
-func (mc *MemoryCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
-	key, err := GenerateHTMLKey(url)
-	if err != nil {
-		return nil, err
-	}
-
+// memoryGet is a generic helper for Get operations
+func memoryGet[T any](mc *MemoryCache, key string) (*T, error) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
@@ -90,7 +85,6 @@ func (mc *MemoryCache) GetHTML(ctx context.Context, url string) (*domain.Analysi
 
 	// Check expiration
 	if time.Now().After(entry.expiresAt) {
-		// Expired - remove it
 		mc.removeEntry(entry)
 		mc.misses++
 		return nil, ErrCacheMiss
@@ -101,32 +95,23 @@ func (mc *MemoryCache) GetHTML(ctx context.Context, url string) (*domain.Analysi
 	mc.hits++
 
 	// Deserialize
-	var result domain.AnalysisResult
+	var result T
 	if err := json.Unmarshal(entry.value, &result); err != nil {
 		return nil, err
 	}
 
-	result.CacheHit = true
 	return &result, nil
 }
 
-// SetHTML stores HTML analysis result in cache
-func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.AnalysisResult, ttl time.Duration) error {
-	key, err := GenerateHTMLKey(url)
-	if err != nil {
-		return err
-	}
-
-	if ttl == 0 {
-		ttl = mc.ttl
-	}
-	// Enforce maximum TTL to prevent extremely long-lived entries
+// memorySet is a generic helper for Set operations
+func memorySet[T any](mc *MemoryCache, key string, data T, ttl time.Duration) error {
+	// Enforce maximum TTL
 	if ttl > maxTTL {
 		ttl = maxTTL
 	}
 
 	// Serialize
-	data, err := json.Marshal(result)
+	bytes, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
@@ -137,9 +122,9 @@ func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.A
 	// Check if already exists
 	if entry, exists := mc.items[key]; exists {
 		// Update existing entry
-		entry.value = data
+		entry.value = bytes
 		entry.expiresAt = time.Now().Add(ttl)
-		entry.size = int64(len(data))
+		entry.size = int64(len(bytes))
 		mc.lru.MoveToFront(entry.element)
 		return nil
 	}
@@ -152,160 +137,79 @@ func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.A
 	// Add new entry
 	entry := &cacheEntry{
 		key:       key,
-		value:     data,
+		value:     bytes,
 		expiresAt: time.Now().Add(ttl),
-		size:      int64(len(data)),
+		size:      int64(len(bytes)),
 	}
 
 	entry.element = mc.lru.PushFront(entry)
 	mc.items[key] = entry
 
 	return nil
+}
+
+// GetHTML retrieves cached HTML analysis result
+func (mc *MemoryCache) GetHTML(ctx context.Context, url string) (*domain.AnalysisResult, error) {
+	key, err := GenerateHTMLKey(url)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := memoryGet[domain.AnalysisResult](mc, key)
+	if err != nil {
+		return nil, err
+	}
+
+	result.CacheHit = true
+	return result, nil
+}
+
+// SetHTML stores HTML analysis result in cache
+func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.AnalysisResult, ttl time.Duration) error {
+	key, err := GenerateHTMLKey(url)
+	if err != nil {
+		return err
+	}
+
+	if ttl == 0 {
+		ttl = mc.ttl
+	}
+
+	return memorySet(mc, key, result, ttl)
 }
 
 // GetLinkCheck retrieves cached link check result
 func (mc *MemoryCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
 	key := GenerateLinkCheckKey(jobID)
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	entry, exists := mc.items[key]
-	if !exists {
-		mc.misses++
-		return nil, ErrCacheMiss
-	}
-
-	// Check expiration
-	if time.Now().After(entry.expiresAt) {
-		mc.removeEntry(entry)
-		mc.misses++
-		return nil, ErrCacheMiss
-	}
-
-	mc.lru.MoveToFront(entry.element)
-	mc.hits++
-
-	var result domain.LinkCheckResult
-	if err := json.Unmarshal(entry.value, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	return memoryGet[domain.LinkCheckResult](mc, key)
 }
 
 // SetLinkCheck stores link check result in cache
-//
-//nolint:dupl // Similar to SetCachedLink but different types
 func (mc *MemoryCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
 	key := GenerateLinkCheckKey(jobID)
 
 	if ttl == 0 {
-		ttl = 5 * time.Minute // Shorter TTL for link checks
-	}
-	// Enforce maximum TTL
-	if ttl > maxTTL {
-		ttl = maxTTL
+		ttl = DefaultLinkCheckTTL
 	}
 
-	data, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	// Evict if at capacity
-	if mc.lru.Len() >= mc.maxSize {
-		mc.evictOldest()
-	}
-
-	entry := &cacheEntry{
-		key:       key,
-		value:     data,
-		expiresAt: time.Now().Add(ttl),
-		size:      int64(len(data)),
-	}
-
-	entry.element = mc.lru.PushFront(entry)
-	mc.items[key] = entry
-
-	return nil
+	return memorySet(mc, key, result, ttl)
 }
 
 // GetCachedLink retrieves a cached individual link check result
 func (mc *MemoryCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
 	key := GenerateCachedLinkKey(url)
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	entry, ok := mc.items[key]
-	if !ok {
-		mc.misses++
-		return nil, ErrCacheMiss
-	}
-
-	// Check if expired
-	if time.Now().After(entry.expiresAt) {
-		mc.misses++
-		delete(mc.items, key)
-		mc.lru.Remove(entry.element)
-		mc.evictions++
-		return nil, ErrCacheMiss
-	}
-
-	// Move to front (most recently used)
-	mc.lru.MoveToFront(entry.element)
-	mc.hits++
-
-	var result domain.CachedLinkCheck
-	if err := json.Unmarshal(entry.value, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	return memoryGet[domain.CachedLinkCheck](mc, key)
 }
 
 // SetCachedLink stores an individual link check result in cache
-//
-//nolint:dupl // Similar to SetLinkCheck but different types
 func (mc *MemoryCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
 	key := GenerateCachedLinkKey(url)
 
 	if ttl == 0 {
-		ttl = 5 * time.Minute // Short TTL for individual link checks
-	}
-	// Enforce maximum TTL
-	if ttl > maxTTL {
-		ttl = maxTTL
+		ttl = DefaultCachedLinkTTL
 	}
 
-	data, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	// Evict if at capacity
-	if mc.lru.Len() >= mc.maxSize {
-		mc.evictOldest()
-	}
-
-	entry := &cacheEntry{
-		key:       key,
-		value:     data,
-		expiresAt: time.Now().Add(ttl),
-		size:      int64(len(data)),
-	}
-
-	entry.element = mc.lru.PushFront(entry)
-	mc.items[key] = entry
-
-	return nil
+	return memorySet(mc, key, result, ttl)
 }
 
 // Delete removes a cached entry
