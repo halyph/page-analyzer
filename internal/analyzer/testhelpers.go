@@ -25,7 +25,6 @@ func testFetchingConfig() config.FetchingConfig {
 	return config.FetchingConfig{
 		Timeout:     15 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024, // 10MB
-		UserAgent:   "PageAnalyzer/1.0",
 	}
 }
 
@@ -39,10 +38,10 @@ func testProcessingConfig() config.ProcessingConfig {
 // testServiceConfig returns a default ServiceConfig for tests
 func testServiceConfig() ServiceConfig {
 	return ServiceConfig{
-		Fetcher:  testFetchingConfig(),
-		Walker:   testProcessingConfig(),
-		Cache:    nil, // Will use NoOpCache
-		CacheTTL: time.Hour,
+		Fetcher:      testFetchingConfig(),
+		Walker:       testProcessingConfig(),
+		Cache:        nil, // Will use NoOpCache
+		PageCacheTTL: time.Hour,
 	}
 }
 
@@ -53,7 +52,6 @@ func testLinkCheckConfig() LinkCheckConfig {
 		QueueSize:  100,
 		Timeout:    5 * time.Second,
 		JobMaxAge:  10 * time.Minute,
-		UserAgent:  "PageAnalyzer/1.0",
 		JobWorkers: 10,
 	}
 }

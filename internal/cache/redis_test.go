@@ -21,7 +21,7 @@ func skipIfNoRedis(t *testing.T) string {
 	}
 
 	// Try to connect
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	if err != nil {
 		t.Skipf("Redis not available: %v", err)
 		return ""
@@ -38,7 +38,7 @@ func skipIfNoRedis(t *testing.T) string {
 func TestNewRedisCache(t *testing.T) {
 	redisURL := skipIfNoRedis(t)
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	require.NotNil(t, cache)
 	defer cache.Close()
@@ -50,7 +50,7 @@ func TestNewRedisCache(t *testing.T) {
 }
 
 func TestNewRedisCache_InvalidURL(t *testing.T) {
-	_, err := NewRedisCache("invalid://url", 1*time.Hour)
+	_, err := NewRedisCache("invalid://url")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid redis URL")
 }
@@ -58,7 +58,7 @@ func TestNewRedisCache_InvalidURL(t *testing.T) {
 func TestRedisCache_HTMLAnalysis(t *testing.T) {
 	redisURL := skipIfNoRedis(t)
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -97,7 +97,7 @@ func TestRedisCache_HTMLAnalysis(t *testing.T) {
 func TestRedisCache_TTL(t *testing.T) {
 	redisURL := skipIfNoRedis(t)
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -127,7 +127,7 @@ func TestRedisCache_TTL(t *testing.T) {
 func TestRedisCache_ConcurrentAccess(t *testing.T) {
 	redisURL := skipIfNoRedis(t)
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -160,7 +160,7 @@ func TestRedisCache_ConcurrentAccess(t *testing.T) {
 func TestRedisCache_Close(t *testing.T) {
 	redisURL := skipIfNoRedis(t)
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 
 	// Close should succeed

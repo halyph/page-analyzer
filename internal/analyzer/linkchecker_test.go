@@ -339,7 +339,6 @@ func TestDefaultLinkCheckConfig(t *testing.T) {
 	assert.Equal(t, 100, config.QueueSize)
 	assert.Equal(t, 5*time.Second, config.Timeout)
 	assert.Equal(t, 10*time.Minute, config.JobMaxAge)
-	assert.Equal(t, "PageAnalyzer/1.0", config.UserAgent)
 }
 
 func TestLinkCheckWorkerPool_Stop(t *testing.T) {

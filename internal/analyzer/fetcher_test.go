@@ -223,17 +223,15 @@ func TestFetcher_UserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testFetchingConfig()
-	config.UserAgent = "CustomBot/2.0"
-	fetcher := NewFetcher(config)
+	fetcher := NewFetcher(testFetchingConfig())
 
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
 
-	if receivedUA != "CustomBot/2.0" {
-		t.Errorf("User-Agent = %s, want CustomBot/2.0", receivedUA)
+	if receivedUA != "PageAnalyzer/1.0" {
+		t.Errorf("User-Agent = %s, want PageAnalyzer/1.0", receivedUA)
 	}
 }
 

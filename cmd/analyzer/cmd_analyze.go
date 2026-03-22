@@ -81,7 +81,7 @@ func runAnalyze(c *cli.Context) error {
 }
 
 func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service {
-	memCache := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+	memCache := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize)
 
 	// Override timeout if specified via CLI flag
 	fetchingCfg := cfg.Fetching
@@ -90,20 +90,21 @@ func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service 
 	}
 
 	serviceCfg := analyzer.ServiceConfig{
-		Fetcher:  fetchingCfg,
-		Walker:   cfg.Processing,
-		Cache:    memCache,
-		CacheTTL: cfg.Caching.TTL,
+		Fetcher:      fetchingCfg,
+		Walker:       cfg.Processing,
+		Cache:        memCache,
+		PageCacheTTL: cfg.Caching.PageCacheTTL,
 	}
 
 	if c.Bool("check-links") {
 		linkCheckCfg := analyzer.LinkCheckConfig{
-			Timeout:    cfg.LinkChecking.CheckTimeout,
-			Workers:    cfg.LinkChecking.Workers,
-			QueueSize:  cfg.LinkChecking.QueueSize,
-			JobMaxAge:  cfg.Caching.LinkCacheTTL,
-			UserAgent:  cfg.Fetching.UserAgent,
-			JobWorkers: cfg.LinkChecking.JobWorkers,
+			Timeout:      cfg.LinkChecking.CheckTimeout,
+			Workers:      cfg.LinkChecking.Workers,
+			QueueSize:    cfg.LinkChecking.QueueSize,
+			JobMaxAge:    cfg.LinkChecking.JobMaxAge,
+			JobWorkers:   cfg.LinkChecking.JobWorkers,
+			Cache:        memCache,
+			LinkCacheTTL: cfg.Caching.LinkCacheTTL,
 		}
 		serviceCfg.LinkChecker = &linkCheckCfg
 	}

@@ -17,7 +17,6 @@ func Load() Config {
 		Fetching: FetchingConfig{
 			Timeout:     envDuration("ANALYZER_FETCH_TIMEOUT", 15*time.Second),
 			MaxBodySize: envInt64("ANALYZER_MAX_BODY_SIZE", 10*1024*1024), // 10MB
-			UserAgent:   envString("ANALYZER_USER_AGENT", "PageAnalyzer/1.0"),
 		},
 		Processing: ProcessingConfig{
 			MaxTokens:  envInt("ANALYZER_MAX_TOKENS", 1_000_000), // 1M tokens
@@ -31,10 +30,11 @@ func Load() Config {
 			MaxLinks:     envInt("ANALYZER_MAX_LINKS", 10000),
 			SyncLimit:    envInt("ANALYZER_SYNC_LIMIT", 10),
 			JobWorkers:   envInt("ANALYZER_JOB_WORKERS", 10),
+			JobMaxAge:    envDuration("ANALYZER_JOB_MAX_AGE", 10*time.Minute),
 		},
 		Caching: CachingConfig{
 			Mode:            envString("ANALYZER_CACHE_MODE", CacheModeMemory),
-			TTL:             envDuration("ANALYZER_CACHE_TTL", 1*time.Hour),
+			PageCacheTTL:    envDuration("ANALYZER_PAGE_CACHE_TTL", 1*time.Hour),
 			LinkCacheTTL:    envDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
 			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "redis://localhost:6379/0"),
 			RedisPassword:   envString("ANALYZER_REDIS_PASSWORD", ""),
@@ -90,25 +90,25 @@ type ProcessingConfig struct {
 type FetchingConfig struct {
 	Timeout     time.Duration
 	MaxBodySize int64
-	UserAgent   string
 }
 
 // LinkCheckingConfig holds configuration for link checking
 type LinkCheckingConfig struct {
-	CheckMode    string // sync, async, hybrid, disabled
-	CheckTimeout time.Duration
-	Workers      int
-	QueueSize    int
-	MaxLinks     int
-	SyncLimit    int // For hybrid mode: check first N synchronously
-	JobWorkers   int // Concurrent checks within a single job
+	CheckMode    string        // sync, async, hybrid, disabled
+	CheckTimeout time.Duration // HTTP request timeout for individual link checks
+	Workers      int           // Number of concurrent worker goroutines
+	QueueSize    int           // Job queue buffer size
+	MaxLinks     int           // Maximum links to check per request
+	SyncLimit    int           // For hybrid mode: check first N synchronously
+	JobWorkers   int           // Concurrent checks within a single job
+	JobMaxAge    time.Duration // How long to keep completed jobs in memory
 }
 
 // CachingConfig holds configuration for caching
 type CachingConfig struct {
-	Mode            string // memory, redis, multi, disabled
-	TTL             time.Duration
-	LinkCacheTTL    time.Duration
+	Mode            string        // memory, redis, multi, disabled
+	PageCacheTTL    time.Duration // TTL for HTML page analysis results
+	LinkCacheTTL    time.Duration // TTL for individual link check results
 	RedisAddr       string
 	RedisPassword   string
 	MemoryCacheSize int

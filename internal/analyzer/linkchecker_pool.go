@@ -22,7 +22,6 @@ type LinkCheckWorkerPool struct {
 	client       *http.Client
 	timeout      time.Duration
 	maxAge       time.Duration
-	userAgent    string
 	cache        cache.Cache   // Optional cache for individual link results
 	linkCacheTTL time.Duration // TTL for cached link results
 	stopCleanup  chan struct{}
@@ -43,9 +42,6 @@ func NewLinkCheckWorkerPool(cfg LinkCheckConfig) *LinkCheckWorkerPool {
 	}
 	if cfg.JobMaxAge <= 0 {
 		cfg.JobMaxAge = 10 * time.Minute
-	}
-	if cfg.UserAgent == "" {
-		cfg.UserAgent = "PageAnalyzer/1.0"
 	}
 	if cfg.JobWorkers <= 0 {
 		cfg.JobWorkers = 10
@@ -70,7 +66,6 @@ func NewLinkCheckWorkerPool(cfg LinkCheckConfig) *LinkCheckWorkerPool {
 		jobs:         make(chan *domain.LinkCheckJob, cfg.QueueSize),
 		timeout:      cfg.Timeout,
 		maxAge:       cfg.JobMaxAge,
-		userAgent:    cfg.UserAgent,
 		cache:        linkCache,
 		linkCacheTTL: cfg.LinkCacheTTL,
 		stopCleanup:  make(chan struct{}),

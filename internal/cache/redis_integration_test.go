@@ -44,7 +44,7 @@ func TestIntegration_RedisCache_FullLifecycle(t *testing.T) {
 	redisURL, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -109,7 +109,7 @@ func TestIntegration_RedisCache_TTLExpiration(t *testing.T) {
 	redisURL, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -141,7 +141,7 @@ func TestIntegration_RedisCache_ConcurrentWrites(t *testing.T) {
 	redisURL, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -176,7 +176,7 @@ func TestIntegration_RedisCache_LargeDataset(t *testing.T) {
 	redisURL, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 
@@ -211,8 +211,8 @@ func TestIntegration_MultiCache_WithRealRedis(t *testing.T) {
 	defer cleanup()
 
 	// Create L1 (memory) + L2 (Redis)
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2, err := NewRedisCache(redisURL, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer l2.Close()
 
@@ -259,7 +259,7 @@ func TestIntegration_MultiCache_WithRealRedis(t *testing.T) {
 
 func TestIntegration_RedisCache_ConnectionFailure(t *testing.T) {
 	// Try to connect to non-existent Redis
-	_, err := NewRedisCache("redis://localhost:9999/0", 1*time.Hour)
+	_, err := NewRedisCache("redis://localhost:9999/0")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "redis connection failed")
 }
@@ -268,7 +268,7 @@ func TestIntegration_RedisCache_Reconnection(t *testing.T) {
 	redisURL, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
+	cache, err := NewRedisCache(redisURL)
 	require.NoError(t, err)
 	defer cache.Close()
 

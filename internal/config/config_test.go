@@ -24,7 +24,6 @@ func TestLoad_Defaults(t *testing.T) {
 	// Fetching defaults
 	assert.Equal(t, 15*time.Second, cfg.Fetching.Timeout)
 	assert.Equal(t, int64(10*1024*1024), cfg.Fetching.MaxBodySize)
-	assert.Equal(t, "PageAnalyzer/1.0", cfg.Fetching.UserAgent)
 
 	// Processing defaults
 	assert.Equal(t, 1_000_000, cfg.Processing.MaxTokens)
@@ -38,7 +37,7 @@ func TestLoad_Defaults(t *testing.T) {
 
 	// Caching defaults
 	assert.Equal(t, CacheModeMemory, cfg.Caching.Mode)
-	assert.Equal(t, 1*time.Hour, cfg.Caching.TTL)
+	assert.Equal(t, 1*time.Hour, cfg.Caching.PageCacheTTL)
 	assert.Equal(t, 5*time.Minute, cfg.Caching.LinkCacheTTL)
 
 	// Rate limiting defaults
@@ -88,7 +87,7 @@ func TestLoad_InvalidValues_Panic(t *testing.T) {
 		{"invalid_int", "ANALYZER_CHECK_WORKERS", "invalid"},
 		{"invalid_int64", "ANALYZER_MAX_BODY_SIZE", "not-a-number"},
 		{"invalid_bool", "ANALYZER_RATE_LIMIT_ENABLED", "maybe"},
-		{"invalid_duration", "ANALYZER_CACHE_TTL", "forever"},
+		{"invalid_duration", "ANALYZER_PAGE_CACHE_TTL", "forever"},
 	}
 
 	for _, tt := range tests {
@@ -143,11 +142,11 @@ func TestLoad_DurationParsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("ANALYZER_CACHE_TTL", tt.value)
-			defer os.Unsetenv("ANALYZER_CACHE_TTL")
+			os.Setenv("ANALYZER_PAGE_CACHE_TTL", tt.value)
+			defer os.Unsetenv("ANALYZER_PAGE_CACHE_TTL")
 
 			cfg := Load()
-			assert.Equal(t, tt.expected, cfg.Caching.TTL)
+			assert.Equal(t, tt.expected, cfg.Caching.PageCacheTTL)
 		})
 	}
 }

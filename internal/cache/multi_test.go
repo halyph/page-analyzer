@@ -11,16 +11,16 @@ import (
 )
 
 func TestNewMultiCache(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 
 	cache := NewMultiCache(l1, l2)
 	assert.NotNil(t, cache)
 }
 
 func TestMultiCache_HTMLAnalysis_L1Hit(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	ctx := context.Background()
@@ -42,8 +42,8 @@ func TestMultiCache_HTMLAnalysis_L1Hit(t *testing.T) {
 }
 
 func TestMultiCache_HTMLAnalysis_L2HitBackfillL1(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	ctx := context.Background()
@@ -73,8 +73,8 @@ func TestMultiCache_HTMLAnalysis_L2HitBackfillL1(t *testing.T) {
 }
 
 func TestMultiCache_HTMLAnalysis_CacheMiss(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	ctx := context.Background()
@@ -86,8 +86,8 @@ func TestMultiCache_HTMLAnalysis_CacheMiss(t *testing.T) {
 }
 
 func TestMultiCache_SetHTML_WritesBothTiers(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	ctx := context.Background()
@@ -113,7 +113,7 @@ func TestMultiCache_SetHTML_WritesBothTiers(t *testing.T) {
 }
 
 func TestMultiCache_L2Failure_GracefulDegradation(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
+	l1 := NewMemoryCache(100)
 	l2 := NewNoOpCache() // No-op cache simulates L2 failure
 	cache := NewMultiCache(l1, l2)
 
@@ -136,8 +136,8 @@ func TestMultiCache_L2Failure_GracefulDegradation(t *testing.T) {
 }
 
 func TestMultiCache_ConcurrentAccess(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	ctx := context.Background()
@@ -167,8 +167,8 @@ func TestMultiCache_ConcurrentAccess(t *testing.T) {
 }
 
 func TestMultiCache_Close(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 	cache := NewMultiCache(l1, l2)
 
 	// Close should succeed
@@ -181,8 +181,8 @@ func TestMultiCache_Close(t *testing.T) {
 }
 
 func TestMultiCache_CustomBackfillTTL(t *testing.T) {
-	l1 := NewMemoryCache(100, 1*time.Hour)
-	l2 := NewMemoryCache(1000, 1*time.Hour)
+	l1 := NewMemoryCache(100)
+	l2 := NewMemoryCache(1000)
 
 	// Create multi-cache with custom backfill TTL
 	customBackfillTTL := 30 * time.Minute

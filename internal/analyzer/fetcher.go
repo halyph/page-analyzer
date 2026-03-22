@@ -15,7 +15,6 @@ import (
 type Fetcher struct {
 	client      *http.Client
 	maxBodySize int64
-	userAgent   string
 }
 
 // NewFetcher creates a new HTTP fetcher with the given configuration
@@ -37,7 +36,6 @@ func NewFetcher(cfg config.FetchingConfig) *Fetcher {
 			},
 		},
 		maxBodySize: cfg.MaxBodySize,
-		userAgent:   cfg.UserAgent,
 	}
 }
 
@@ -55,7 +53,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (*domain.FetchResult, e
 	}
 
 	// Set headers
-	req.Header.Set("User-Agent", f.userAgent)
+	req.Header.Set("User-Agent", "PageAnalyzer/1.0")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 
 	// Execute request

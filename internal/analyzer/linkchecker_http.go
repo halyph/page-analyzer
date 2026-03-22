@@ -56,14 +56,8 @@ func (p *LinkCheckWorkerPool) doRequest(ctx context.Context, method, urlStr, bas
 		return fmt.Errorf("invalid_url: %w", err)
 	}
 
-	// Use realistic browser user agent or custom if not bot-like
-	userAgent := p.userAgent
-	if strings.Contains(userAgent, "PageAnalyzer") || strings.Contains(userAgent, "bot") || strings.Contains(userAgent, "Bot") {
-		userAgent = getRandomUserAgent()
-	}
-
 	// Set comprehensive browser-like headers to avoid bot detection
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", getRandomUserAgent())
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Accept-Encoding", "gzip, deflate, br")

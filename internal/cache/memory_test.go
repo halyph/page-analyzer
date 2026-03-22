@@ -11,22 +11,20 @@ import (
 )
 
 func TestNewMemoryCache(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 
 	assert.NotNil(t, cache)
 	assert.Equal(t, 10, cache.maxSize)
-	assert.Equal(t, 5*time.Minute, cache.ttl)
 }
 
 func TestNewMemoryCache_Defaults(t *testing.T) {
-	cache := NewMemoryCache(0, 0)
+	cache := NewMemoryCache(0)
 
 	assert.Equal(t, 100, cache.maxSize)
-	assert.Equal(t, 1*time.Hour, cache.ttl)
 }
 
 func TestMemoryCache_SetAndGetHTML(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	url := "https://example.com"
@@ -37,7 +35,7 @@ func TestMemoryCache_SetAndGetHTML(t *testing.T) {
 	}
 
 	// Set
-	err := cache.SetHTML(ctx, url, result, 0)
+	err := cache.SetHTML(ctx, url, result, 1*time.Hour)
 	require.NoError(t, err)
 
 	// Get
@@ -49,7 +47,7 @@ func TestMemoryCache_SetAndGetHTML(t *testing.T) {
 }
 
 func TestMemoryCache_GetHTML_Miss(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	_, err := cache.GetHTML(ctx, "https://nonexistent.com")
@@ -57,7 +55,7 @@ func TestMemoryCache_GetHTML_Miss(t *testing.T) {
 }
 
 func TestMemoryCache_Expiration(t *testing.T) {
-	cache := NewMemoryCache(10, 100*time.Millisecond)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	url := "https://example.com"
@@ -83,21 +81,21 @@ func TestMemoryCache_Expiration(t *testing.T) {
 }
 
 func TestMemoryCache_LRUEviction(t *testing.T) {
-	cache := NewMemoryCache(3, 5*time.Minute)
+	cache := NewMemoryCache(3)
 	ctx := context.Background()
 
 	// Add 3 entries (max capacity)
 	for i := 1; i <= 3; i++ {
 		url := "https://example.com/page" + string(rune('0'+i))
 		result := &domain.AnalysisResult{URL: url}
-		err := cache.SetHTML(ctx, url, result, 0)
+		err := cache.SetHTML(ctx, url, result, 1*time.Hour)
 		require.NoError(t, err)
 	}
 
 	// Add 4th entry - should evict oldest
 	url4 := "https://example.com/page4"
 	result4 := &domain.AnalysisResult{URL: url4}
-	err := cache.SetHTML(ctx, url4, result4, 0)
+	err := cache.SetHTML(ctx, url4, result4, 1*time.Hour)
 	require.NoError(t, err)
 
 	// First entry should be evicted
@@ -110,7 +108,7 @@ func TestMemoryCache_LRUEviction(t *testing.T) {
 }
 
 func TestMemoryCache_UpdateExisting(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	url := "https://example.com"
@@ -119,7 +117,7 @@ func TestMemoryCache_UpdateExisting(t *testing.T) {
 		Title: "First",
 	}
 
-	err := cache.SetHTML(ctx, url, result1, 0)
+	err := cache.SetHTML(ctx, url, result1, 1*time.Hour)
 	require.NoError(t, err)
 
 	// Update with new data
@@ -128,7 +126,7 @@ func TestMemoryCache_UpdateExisting(t *testing.T) {
 		Title: "Second",
 	}
 
-	err = cache.SetHTML(ctx, url, result2, 0)
+	err = cache.SetHTML(ctx, url, result2, 1*time.Hour)
 	require.NoError(t, err)
 
 	// Should have updated value
@@ -138,7 +136,7 @@ func TestMemoryCache_UpdateExisting(t *testing.T) {
 }
 
 func TestMemoryCache_CleanupExpired(t *testing.T) {
-	cache := NewMemoryCache(10, 100*time.Millisecond)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	// Add entries with short TTL
@@ -158,7 +156,7 @@ func TestMemoryCache_CleanupExpired(t *testing.T) {
 }
 
 func TestMemoryCache_URLNormalization(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	url1 := "https://example.com/path?a=1&b=2"
@@ -167,7 +165,7 @@ func TestMemoryCache_URLNormalization(t *testing.T) {
 	result := &domain.AnalysisResult{URL: url1}
 
 	// Set with url1
-	err := cache.SetHTML(ctx, url1, result, 0)
+	err := cache.SetHTML(ctx, url1, result, 1*time.Hour)
 	require.NoError(t, err)
 
 	// Get with url2 (different query order) - should hit
@@ -177,13 +175,13 @@ func TestMemoryCache_URLNormalization(t *testing.T) {
 }
 
 func TestMemoryCache_Close(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	ctx := context.Background()
 
 	// Add some data
 	url := "https://example.com"
 	result := &domain.AnalysisResult{URL: url}
-	err := cache.SetHTML(ctx, url, result, 0)
+	err := cache.SetHTML(ctx, url, result, 1*time.Hour)
 	require.NoError(t, err)
 
 	// Close should stop cleanup goroutine
@@ -197,7 +195,7 @@ func TestMemoryCache_Close(t *testing.T) {
 }
 
 func TestMemoryCache_CloseIdempotent(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 
 	// Close multiple times should not panic
 	err := cache.Close()
@@ -210,7 +208,7 @@ func TestMemoryCache_CloseIdempotent(t *testing.T) {
 }
 
 func TestMemoryCache_MaxTTLEnforcement(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
+	cache := NewMemoryCache(10)
 	defer cache.Close()
 	ctx := context.Background()
 

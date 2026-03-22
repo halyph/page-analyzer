@@ -101,13 +101,13 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 		return cache.NewNoOpCache()
 	case config.CacheModeMemory:
 		logger.Info("using memory cache", "size", cfg.Caching.MemoryCacheSize)
-		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize)
 	case config.CacheModeRedis:
 		logger.Info("using redis cache", "addr", cfg.Caching.RedisAddr)
-		redisCache, err := cache.NewRedisCache(cfg.Caching.RedisAddr, cfg.Caching.TTL)
+		redisCache, err := cache.NewRedisCache(cfg.Caching.RedisAddr)
 		if err != nil {
 			logger.Error("failed to create redis cache, falling back to memory", "error", err)
-			return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+			return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize)
 		}
 		return redisCache
 	case config.CacheModeMulti:
@@ -115,9 +115,9 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 			"l1_size", cfg.Caching.MemoryCacheSize,
 			"l2_addr", cfg.Caching.RedisAddr)
 		// Create L1 (memory)
-		l1 := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		l1 := cache.NewMemoryCache(cfg.Caching.MemoryCacheSize)
 		// Create L2 (redis)
-		l2, err := cache.NewRedisCache(cfg.Caching.RedisAddr, cfg.Caching.TTL)
+		l2, err := cache.NewRedisCache(cfg.Caching.RedisAddr)
 		if err != nil {
 			logger.Error("failed to create redis L2 cache, using memory only", "error", err)
 			return l1
@@ -125,7 +125,7 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 		return cache.NewMultiCache(l1, l2)
 	default:
 		logger.Warn("unknown cache mode, using memory", "mode", cfg.Caching.Mode)
-		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize, cfg.Caching.TTL)
+		return cache.NewMemoryCache(cfg.Caching.MemoryCacheSize)
 	}
 }
 
@@ -134,8 +134,7 @@ func createLinkChecker(cfg config.Config, cacheImpl cache.Cache, logger *slog.Lo
 		Timeout:      cfg.LinkChecking.CheckTimeout,
 		Workers:      cfg.LinkChecking.Workers,
 		QueueSize:    cfg.LinkChecking.QueueSize,
-		JobMaxAge:    cfg.Caching.LinkCacheTTL,
-		UserAgent:    cfg.Fetching.UserAgent,
+		JobMaxAge:    cfg.LinkChecking.JobMaxAge,
 		JobWorkers:   cfg.LinkChecking.JobWorkers,
 		Cache:        cacheImpl,
 		LinkCacheTTL: cfg.Caching.LinkCacheTTL,
@@ -158,7 +157,7 @@ func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyz
 		Walker:          cfg.Processing,
 		LinkCheckerPool: linkChecker,
 		Cache:           cacheImpl,
-		CacheTTL:        cfg.Caching.TTL,
+		PageCacheTTL:    cfg.Caching.PageCacheTTL,
 		Logger:          logger,
 	}
 

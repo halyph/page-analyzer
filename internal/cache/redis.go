@@ -13,15 +13,11 @@ import (
 // RedisCache implements cache using Redis
 type RedisCache struct {
 	client *redis.Client
-	ttl    time.Duration
 }
 
 // NewRedisCache creates a new Redis cache client
-func NewRedisCache(redisURL string, ttl time.Duration) (*RedisCache, error) {
-	if ttl <= 0 {
-		ttl = 1 * time.Hour
-	}
-
+// TTL must be specified explicitly when calling SetHTML/SetCachedLink
+func NewRedisCache(redisURL string) (*RedisCache, error) {
 	// Parse Redis URL
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -54,7 +50,6 @@ func NewRedisCache(redisURL string, ttl time.Duration) (*RedisCache, error) {
 
 	return &RedisCache{
 		client: client,
-		ttl:    ttl,
 	}, nil
 }
 
@@ -95,11 +90,8 @@ func (rc *RedisCache) GetHTML(ctx context.Context, url string) (*domain.Analysis
 	return redisGet[domain.AnalysisResult](rc, ctx, htmlKey(url))
 }
 
-// SetHTML stores HTML analysis result in cache
+// SetHTML stores HTML analysis result in cache with explicit TTL
 func (rc *RedisCache) SetHTML(ctx context.Context, url string, result *domain.AnalysisResult, ttl time.Duration) error {
-	if ttl <= 0 {
-		ttl = rc.ttl
-	}
 	return redisSet(rc, ctx, htmlKey(url), result, ttl)
 }
 
@@ -108,11 +100,8 @@ func (rc *RedisCache) GetCachedLink(ctx context.Context, url string) (*domain.Ca
 	return redisGet[domain.CachedLinkCheck](rc, ctx, cachedLinkKey(url))
 }
 
-// SetCachedLink stores an individual link check result in cache
+// SetCachedLink stores an individual link check result in cache with explicit TTL
 func (rc *RedisCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
-	if ttl <= 0 {
-		ttl = DefaultCachedLinkTTL
-	}
 	return redisSet(rc, ctx, cachedLinkKey(url), result, ttl)
 }
 

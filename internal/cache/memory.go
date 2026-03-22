@@ -22,7 +22,6 @@ const (
 // MemoryCache implements an LRU cache in memory
 type MemoryCache struct {
 	maxSize int
-	ttl     time.Duration
 
 	mu    sync.RWMutex
 	items map[string]*cacheEntry
@@ -49,17 +48,14 @@ type cacheEntry struct {
 }
 
 // NewMemoryCache creates a new in-memory LRU cache
-func NewMemoryCache(maxSize int, ttl time.Duration) *MemoryCache {
+// TTL must be specified explicitly when calling SetHTML/SetCachedLink
+func NewMemoryCache(maxSize int) *MemoryCache {
 	if maxSize <= 0 {
 		maxSize = 100
-	}
-	if ttl <= 0 {
-		ttl = 1 * time.Hour
 	}
 
 	mc := &MemoryCache{
 		maxSize:     maxSize,
-		ttl:         ttl,
 		items:       make(map[string]*cacheEntry),
 		lru:         list.New(),
 		stopCleanup: make(chan struct{}),
@@ -164,15 +160,11 @@ func (mc *MemoryCache) GetHTML(ctx context.Context, url string) (*domain.Analysi
 	return result, nil
 }
 
-// SetHTML stores HTML analysis result in cache
+// SetHTML stores HTML analysis result in cache with explicit TTL
 func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.AnalysisResult, ttl time.Duration) error {
 	key, err := GenerateHTMLKey(url)
 	if err != nil {
 		return err
-	}
-
-	if ttl == 0 {
-		ttl = mc.ttl
 	}
 
 	return memorySet(mc, key, result, ttl)
@@ -184,14 +176,9 @@ func (mc *MemoryCache) GetCachedLink(ctx context.Context, url string) (*domain.C
 	return memoryGet[domain.CachedLinkCheck](mc, key)
 }
 
-// SetCachedLink stores an individual link check result in cache
+// SetCachedLink stores an individual link check result in cache with explicit TTL
 func (mc *MemoryCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
 	key := GenerateCachedLinkKey(url)
-
-	if ttl == 0 {
-		ttl = DefaultCachedLinkTTL
-	}
-
 	return memorySet(mc, key, result, ttl)
 }
 
