@@ -23,8 +23,11 @@ func newAnalyzeCommand() *cli.Command {
 
 Examples:
   analyzer analyze https://example.com
-  analyzer analyze https://example.com --json
-  analyzer analyze https://example.com --check-links`,
+  analyzer analyze --json https://example.com
+  analyzer analyze --check-links https://example.com
+  analyzer analyze --json --check-links https://example.com
+
+Note: Flags must come before the URL argument.`,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "json",
