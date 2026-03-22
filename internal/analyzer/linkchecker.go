@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/cache"
@@ -9,8 +10,8 @@ import (
 
 // LinkChecker defines the interface for link checking implementations
 type LinkChecker interface {
-	// Submit submits a batch of URLs for checking
-	Submit(urls []string, baseURL string) string
+	// Submit submits a batch of URLs for checking with trace context
+	Submit(ctx context.Context, urls []string, baseURL string) string
 
 	// GetJob retrieves a job by ID
 	GetJob(jobID string) (*domain.LinkCheckJob, bool)

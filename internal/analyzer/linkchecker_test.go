@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -36,7 +37,7 @@ func TestLinkCheckWorkerPool_Submit(t *testing.T) {
 	pool := NewLinkCheckWorkerPool(config)
 
 	urls := []string{"https://example.com", "https://example.org"}
-	jobID := pool.Submit(urls, "https://example.com")
+	jobID := pool.Submit(context.Background(), urls, "https://example.com")
 
 	assert.NotEmpty(t, jobID)
 
@@ -70,7 +71,7 @@ func TestLinkCheckWorkerPool_ProcessJob_AllAccessible(t *testing.T) {
 	defer pool.Stop()
 
 	urls := []string{server.URL, server.URL + "/page1", server.URL + "/page2"}
-	jobID := pool.Submit(urls, server.URL)
+	jobID := pool.Submit(context.Background(), urls, server.URL)
 
 	// Wait for job to complete
 	job, err := pool.WaitForJob(jobID, 5*time.Second)
@@ -107,7 +108,7 @@ func TestLinkCheckWorkerPool_ProcessJob_SomeInaccessible(t *testing.T) {
 		server.URL + "/404",
 		server.URL + "/500",
 	}
-	jobID := pool.Submit(urls, server.URL)
+	jobID := pool.Submit(context.Background(), urls, server.URL)
 
 	// Wait for job to complete
 	job, err := pool.WaitForJob(jobID, 5*time.Second)
@@ -143,7 +144,7 @@ func TestLinkCheckWorkerPool_ProcessJob_Redirects(t *testing.T) {
 	defer pool.Stop()
 
 	urls := []string{server.URL + "/redirect"}
-	jobID := pool.Submit(urls, server.URL)
+	jobID := pool.Submit(context.Background(), urls, server.URL)
 
 	job, err := pool.WaitForJob(jobID, 5*time.Second)
 	require.NoError(t, err)
@@ -160,13 +161,13 @@ func TestLinkCheckWorkerPool_FullQueue(t *testing.T) {
 	// Don't start workers - queue will fill up
 
 	// Fill the queue
-	jobID1 := pool.Submit([]string{"https://example.com"}, "https://example.com")
+	jobID1 := pool.Submit(context.Background(), []string{"https://example.com"}, "https://example.com")
 	job1, ok := pool.GetJob(jobID1)
 	require.True(t, ok)
 	assert.Equal(t, domain.LinkCheckPending, job1.Status)
 
 	// Try to submit when queue is full
-	jobID2 := pool.Submit([]string{"https://example.org"}, "https://example.org")
+	jobID2 := pool.Submit(context.Background(), []string{"https://example.org"}, "https://example.org")
 	job2, ok := pool.GetJob(jobID2)
 	require.True(t, ok)
 	assert.Equal(t, domain.LinkCheckFailed, job2.Status)
@@ -178,7 +179,7 @@ func TestLinkCheckWorkerPool_WaitForJob_Timeout(t *testing.T) {
 	pool := NewLinkCheckWorkerPool(config)
 	// Don't start workers - job won't complete
 
-	jobID := pool.Submit([]string{"https://example.com"}, "https://example.com")
+	jobID := pool.Submit(context.Background(), []string{"https://example.com"}, "https://example.com")
 
 	_, err := pool.WaitForJob(jobID, 200*time.Millisecond)
 	assert.Error(t, err)
@@ -364,7 +365,7 @@ func TestLinkCheckWorkerPool_GarbageCollection(t *testing.T) {
 	pool.results.Store("old-job", job)
 
 	// Create a recent job
-	recentJobID := pool.Submit([]string{"https://example.com"}, "https://example.com")
+	recentJobID := pool.Submit(context.Background(), []string{"https://example.com"}, "https://example.com")
 
 	// Run garbage collection
 	pool.gcOldJobs()

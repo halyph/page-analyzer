@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/halyph/page-analyzer/internal/observability"
 )
 
 // Realistic browser user agents to avoid bot detection
@@ -51,8 +53,15 @@ func (p *LinkCheckWorkerPool) checkLink(ctx context.Context, urlStr, baseURL str
 
 // doRequest performs the actual HTTP request
 func (p *LinkCheckWorkerPool) doRequest(ctx context.Context, method, urlStr, baseURL string) error {
+	ctx, span := observability.StartSpan(ctx, "linkChecker.httpRequest",
+		observability.AttrHTTPMethod.String(method),
+		observability.AttrHTTPURL.String(urlStr),
+	)
+	defer span.End()
+
 	req, err := http.NewRequestWithContext(ctx, method, urlStr, nil)
 	if err != nil {
+		observability.RecordError(span, err)
 		return fmt.Errorf("invalid_url: %w", err)
 	}
 
@@ -76,6 +85,7 @@ func (p *LinkCheckWorkerPool) doRequest(ctx context.Context, method, urlStr, bas
 
 	resp, err := p.client.Do(req)
 	if err != nil {
+		observability.RecordError(span, err)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return fmt.Errorf("timeout: %w", err)
 		}
@@ -86,12 +96,19 @@ func (p *LinkCheckWorkerPool) doRequest(ctx context.Context, method, urlStr, bas
 	}
 	defer resp.Body.Close()
 
+	// Record status code
+	observability.SetSpanAttributes(span,
+		observability.AttrHTTPStatusCode.Int(resp.StatusCode),
+	)
+
 	// Accept 2xx and 3xx as accessible
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 		return nil
 	}
 
-	return &httpError{StatusCode: resp.StatusCode}
+	err = &httpError{StatusCode: resp.StatusCode}
+	observability.RecordError(span, err)
+	return err
 }
 
 // httpError wraps HTTP status codes

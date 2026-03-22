@@ -165,7 +165,7 @@ func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisReques
 	}
 
 	// Walk HTML and collect data
-	walkCtx, walkSpan := observability.StartSpan(ctx, "walker.Walk",
+	_, walkSpan := observability.StartSpan(ctx, "walker.Walk",
 		attribute.Int("collectors.count", len(colls)),
 	)
 	if err := s.walker.Walk(fetchResult.Body, colls, result); err != nil {
@@ -176,7 +176,7 @@ func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisReques
 	walkSpan.End()
 
 	// Store in cache (before link checking)
-	cacheCtx, cacheSpan := observability.StartSpan(walkCtx, "cache.SetHTML",
+	cacheCtx, cacheSpan := observability.StartSpan(ctx, "cache.SetHTML",
 		observability.AttrCacheOperation.String("set"),
 	)
 	if err := s.cache.SetHTML(cacheCtx, result.URL, result, s.pageCacheTTL); err != nil {
@@ -198,7 +198,7 @@ func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisR
 		return
 	}
 
-	_, span := observability.StartSpan(ctx, "linkChecker.Submit",
+	ctx, span := observability.StartSpan(ctx, "linkChecker.performCheck",
 		observability.AttrLinkCheckerURLCount.Int(len(result.Links.Internal)+len(result.Links.External)),
 	)
 	defer span.End()
@@ -211,8 +211,8 @@ func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisR
 		return
 	}
 
-	// Submit link check job
-	jobID := s.linkChecker.Submit(allLinks, result.URL)
+	// Submit link check job with trace context
+	jobID := s.linkChecker.Submit(ctx, allLinks, result.URL)
 	result.Links.CheckJobID = jobID
 
 	// For sync mode, wait for completion
@@ -221,14 +221,21 @@ func (s *Service) performLinkCheck(ctx context.Context, result *domain.AnalysisR
 		if req.Options.Timeout > 0 {
 			timeout = req.Options.Timeout
 		}
+
+		_, waitSpan := observability.StartSpan(ctx, "linkChecker.WaitForJob",
+			observability.AttrLinkCheckerJobID.String(jobID),
+			attribute.String("timeout", timeout.String()),
+		)
 		job, err := s.linkChecker.WaitForJob(jobID, timeout)
 		if err != nil {
+			observability.RecordError(waitSpan, err)
 			// Don't fail the analysis, just mark check as failed
 			result.Links.CheckStatus = domain.LinkCheckFailed
 		} else {
 			result.Links.CheckStatus = job.Status
 			result.Links.CheckResult = job.Result
 		}
+		waitSpan.End()
 	} else {
 		// Async mode - mark as pending
 		result.Links.CheckStatus = domain.LinkCheckPending

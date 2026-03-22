@@ -12,6 +12,8 @@ import (
 
 	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/observability"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // LinkCheckWorkerPool manages concurrent link checking with bounded resources
@@ -121,6 +123,15 @@ func (p *LinkCheckWorkerPool) worker(_ int) {
 
 // processJob checks all links in a job
 func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
+	// Always use pool context for HTTP work to avoid timeout/cancellation issues
+	// Async jobs are tracked separately in Jaeger, correlated by job_id
+	ctx, span := observability.StartSpan(p.ctx, "linkChecker.processJob",
+		observability.AttrLinkCheckerJobID.String(job.ID),
+		observability.AttrLinkCheckerURLCount.Int(len(job.URLs)),
+		attribute.String("base_url", job.BaseURL),
+	)
+	defer span.End()
+
 	// Update job status with lock
 	job.Mu.Lock()
 	job.Status = domain.LinkCheckInProgress
@@ -144,9 +155,16 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 			defer wg.Done()
 			defer func() { <-sem }() // Release
 
+			// Create span for individual link check
+			linkCtx, linkSpan := observability.StartSpan(ctx, "linkChecker.checkSingleLink",
+				attribute.String("url", u),
+			)
+			defer linkSpan.End()
+
 			// Check cache first
-			if cached, err := p.cache.GetCachedLink(p.ctx, u); err == nil {
+			if cached, err := p.cache.GetCachedLink(linkCtx, u); err == nil {
 				// Cache hit - use cached result
+				observability.SetSpanAttributes(linkSpan, attribute.Bool("cache_hit", true))
 				if cached.Accessible {
 					mu.Lock()
 					accessible++
@@ -163,8 +181,10 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 				return
 			}
 
+			observability.SetSpanAttributes(linkSpan, attribute.Bool("cache_hit", false))
+
 			// Cache miss - perform actual check
-			err := p.checkLink(p.ctx, u, job.BaseURL)
+			err := p.checkLink(linkCtx, u, job.BaseURL)
 
 			// Store result in cache
 			cachedResult := &domain.CachedLinkCheck{
@@ -175,8 +195,9 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 			if err != nil {
 				cachedResult.StatusCode = extractStatusCode(err)
 				cachedResult.Reason = extractReason(err)
+				observability.RecordError(linkSpan, err)
 			}
-			_ = p.cache.SetCachedLink(p.ctx, u, cachedResult, p.linkCacheTTL)
+			_ = p.cache.SetCachedLink(linkCtx, u, cachedResult, p.linkCacheTTL)
 
 			// Update job results
 			if err != nil {
@@ -215,7 +236,7 @@ func (p *LinkCheckWorkerPool) processJob(job *domain.LinkCheckJob) {
 }
 
 // Submit queues a link check job and returns a job ID
-func (p *LinkCheckWorkerPool) Submit(urls []string, baseURL string) string {
+func (p *LinkCheckWorkerPool) Submit(ctx context.Context, urls []string, baseURL string) string {
 	jobID := generateJobID()
 
 	job := &domain.LinkCheckJob{
@@ -224,6 +245,7 @@ func (p *LinkCheckWorkerPool) Submit(urls []string, baseURL string) string {
 		BaseURL:   baseURL,
 		Status:    domain.LinkCheckPending,
 		CreatedAt: time.Now(),
+		TraceCtx:  nil, // Not used - async jobs use pool context to avoid timeouts
 	}
 
 	p.results.Store(jobID, job)

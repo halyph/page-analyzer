@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -100,6 +101,7 @@ type LinkCheckJob struct {
 	StartedAt   *time.Time       // When processing started
 	CompletedAt *time.Time       // When processing completed
 	Error       string           // Error message if failed
+	TraceCtx    context.Context  // Trace context for connecting async spans
 }
 
 // IsComplete returns true if the job has finished (success or failure)
