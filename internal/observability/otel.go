@@ -28,7 +28,7 @@ type OTELConfig struct {
 // OTELShutdown is a function that shuts down OTEL resources
 type OTELShutdown func(context.Context) error
 
-// InitOTEL initializes OpenTelemetry with metrics and tracing
+// InitOTEL initializes OpenTelemetry with OTLP exporters for metrics and tracing
 func InitOTEL(ctx context.Context, cfg OTELConfig) (OTELShutdown, error) {
 	if !cfg.Enabled {
 		// Return no-op shutdown when disabled
@@ -50,16 +50,15 @@ func InitOTEL(ctx context.Context, cfg OTELConfig) (OTELShutdown, error) {
 		return nil, fmt.Errorf("failed to create OTEL resource: %w", err)
 	}
 
-	// Initialize TracerProvider
+	// Initialize TracerProvider (OTLP traces)
 	tracerShutdown, err := initTracing(ctx, res, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tracing: %w", err)
 	}
 
-	// Initialize MeterProvider
+	// Initialize MeterProvider (OTLP metrics)
 	meterShutdown, err := initMetrics(ctx, res, cfg)
 	if err != nil {
-		// Clean up tracer if meter initialization fails
 		_ = tracerShutdown(ctx)
 		return nil, fmt.Errorf("failed to initialize metrics: %w", err)
 	}
@@ -121,7 +120,7 @@ func initTracing(ctx context.Context, res *resource.Resource, cfg OTELConfig) (O
 	return tracerProvider.Shutdown, nil
 }
 
-// initMetrics initializes the OpenTelemetry MeterProvider
+// initMetrics initializes the OpenTelemetry MeterProvider with OTLP exporter
 func initMetrics(ctx context.Context, res *resource.Resource, cfg OTELConfig) (OTELShutdown, error) {
 	// Create OTLP metric exporter
 	metricExporter, err := otlpmetrichttp.New(ctx,

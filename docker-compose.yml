@@ -1,40 +1,25 @@
 version: '3.8'
 
+# Architecture: App → OTLP → Collector → Jaeger (traces) + Prometheus (metrics)
+# Grafana queries only Prometheus for metrics, Jaeger UI handles all trace visualization
+
 services:
-  # Page Analyzer Application
-  # NOTE: Build binary first with: make build.linux
-  analyzer:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: page-analyzer
+  # OpenTelemetry Collector (receives OTLP, routes to backends)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.117.0
+    container_name: page-analyzer-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
     ports:
-      - "8080:8080"
-    environment:
-      - ANALYZER_ADDR=:8080
-      - ANALYZER_LOG_LEVEL=info
-      - ANALYZER_LOG_FORMAT=json
-      # Cache mode: memory | redis | multi | disabled
-      - ANALYZER_CACHE_MODE=multi
-      - ANALYZER_MEMORY_CACHE_SIZE=200
-      - ANALYZER_REDIS_ADDR=redis://redis:6379/0
-      # Link checking
-      - ANALYZER_CHECK_WORKERS=30
-      - ANALYZER_MAX_LINKS=10000
-    depends_on:
-      redis:
-        condition: service_healthy
+      - "4318:4318"    # OTLP HTTP receiver
+      - "4317:4317"    # OTLP gRPC receiver
+      - "8889:8889"    # Prometheus metrics exporter
+    volumes:
+      - ./deployments/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
     networks:
       - analyzer-network
 
-  # Redis (optional - for distributed caching)
+  # Redis (for distributed caching)
   redis:
     image: redis:7-alpine
     container_name: page-analyzer-redis
@@ -52,9 +37,62 @@ services:
     networks:
       - analyzer-network
 
+  # Jaeger (tracing backend)
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: page-analyzer-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - analyzer-network
+
+  # Prometheus (metrics storage)
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: page-analyzer-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployments/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - analyzer-network
+
+  # Grafana (visualization dashboards)
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: page-analyzer-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./deployments/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deployments/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./deployments/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - analyzer-network
+
 networks:
   analyzer-network:
     driver: bridge
 
 volumes:
   redis-data:
+  prometheus-data:
+  grafana-data:

@@ -179,4 +179,54 @@ docker-logs: ## Follow logs
 	@docker-compose logs -f analyzer
 ## END of Docker
 
+## BEGIN of Demo
+.PHONY: demo
+demo: demo-infra demo-run ## Start infrastructure and run analyzer with OTEL
+
+.PHONY: demo-infra
+demo-infra: ## Start infrastructure (OTEL Collector, Jaeger, Prometheus, Grafana, Redis)
+	@echo "${GREEN}Starting observability infrastructure...${RESET}"
+	@docker-compose up -d
+	@echo ""
+	@echo "${GREEN}Infrastructure started!${RESET}"
+	@echo "${CYAN}Services:${RESET}"
+	@echo "  OTEL Collector: ${YELLOW}localhost:4318${RESET} (OTLP HTTP)"
+	@echo "  Jaeger UI:      ${YELLOW}http://localhost:16686${RESET} (tracing)"
+	@echo "  Grafana:        ${YELLOW}http://localhost:3000${RESET} (unified UI)"
+	@echo "  Prometheus:     ${YELLOW}http://localhost:9090${RESET}"
+	@echo "  Redis:          ${YELLOW}localhost:6379${RESET}"
+	@echo ""
+	@echo "${CYAN}Architecture:${RESET}"
+	@echo "  App → OTLP → Collector → Jaeger (traces) + Prometheus (metrics)"
+	@echo ""
+	@echo "Use ${YELLOW}make demo-run${RESET} to start the analyzer"
+
+.PHONY: demo-run
+demo-run: build ## Run analyzer locally with OTEL enabled
+	@echo "${GREEN}Starting Page Analyzer with OpenTelemetry...${RESET}"
+	@echo "${CYAN}Sending traces + metrics to OTEL Collector${RESET}"
+	@echo ""
+	ANALYZER_OTEL_ENABLED=true \
+	ANALYZER_OTEL_ENDPOINT=localhost:4318 \
+	ANALYZER_METRICS_ENABLED=true \
+	ANALYZER_CACHE_MODE=redis \
+	ANALYZER_REDIS_ADDR=redis://localhost:6379/0 \
+	ANALYZER_LOG_LEVEL=info \
+	./$(BUILD_PATH)/$(UNAME_S)/$(GOARCH)/analyzer serve --addr :8080
+
+.PHONY: demo-down
+demo-down: ## Stop infrastructure and remove volumes
+	@echo "${YELLOW}Stopping infrastructure...${RESET}"
+	@docker-compose down -v
+	@echo "${GREEN}Infrastructure stopped${RESET}"
+
+.PHONY: demo-logs
+demo-logs: ## Follow logs from infrastructure services
+	@docker-compose logs -f
+
+.PHONY: demo-status
+demo-status: ## Show status of infrastructure services
+	@docker-compose ps
+## END of Demo
+
 .SUFFIXES:  # Clear built-in suffix rules (avoid implicit rules for old C/C++ files)
