@@ -96,9 +96,25 @@ At 100K analyses/day: ~$400-1,400/month. Cache (90% hit) cuts costs by 50-70%.
 
 ### 4.1 Observability Improvements
 
-**Current State**: Infrastructure exists (OTel, Jaeger, Prometheus, Grafana) but largely unused
+**Current State**: Infrastructure exists (OTel, Jaeger, Prometheus, Grafana) but has critical issues
 
-**Critical Gaps**:
+**CRITICAL - Tracing Issues (Fixed but needs documentation)**:
+
+1. **Async job trace disconnection** ✅ FIXED
+   - **Problem**: Async link checking jobs appeared as orphaned traces in Jaeger
+   - **Root Cause**: Stored request context in jobs, but context gets cancelled after HTTP response
+   - **Impact**: All link checks timed out (reported as inaccessible), traces disconnected from parent
+   - **Fix**: Use pool's background context for async work, not request context
+   - **Trade-off**: Async jobs now appear as separate traces (not nested), correlated by `link_checker.job_id`
+   - **Note**: This is standard pattern for async work - cannot preserve parent context across async boundaries
+
+2. **Trace hierarchy issues** ⚠️ LIMITATION
+   - **Current**: Async jobs show as separate traces in Jaeger
+   - **Correlation**: Use `link_checker.job_id` attribute to find related spans
+   - **Why**: Context cancellation prevents nesting (sync analysis → async processing)
+   - **Alternative**: Could use OpenTelemetry Links, but adds complexity for minimal benefit
+
+**Other Critical Gaps**:
 
 1. **Metrics not recorded**: Defined but never called
    - ❌ `RecordCacheHit/Miss` - Not called in cache implementations
@@ -108,7 +124,10 @@ At 100K analyses/day: ~$400-1,400/month. Cache (90% hit) cuts costs by 50-70%.
 2. **Metrics not injected**: Created in main but not passed to cache/analyzer/link checker
 3. **No error tracking**: No metrics for 4xx/5xx, timeouts, parse failures, cache errors
 4. **Dashboard incomplete**: Missing error panels, cache breakdown (L1/L2), link check metrics, queue depth, percentiles (p99)
-5. **Tracing too shallow**: Missing spans for collectors, individual link checks, Redis ops, HTTP fetches
+5. **Incomplete span coverage**: Fixed main flows, but missing:
+   - ❌ Individual collector spans (title, headings, links, login form collectors)
+   - ❌ Redis operation spans (Get/Set with key and TTL info)
+   - ❌ Cache layer differentiation (L1 vs L2 cache spans)
 6. **No alerting**: No Prometheus alert rules for high errors, slow requests, low cache hit rate, queue backlog
 7. **Queue gauge not implemented**: `queueSize` defined but callback never registered
 8. **No histogram buckets**: Using defaults, not optimized for actual latencies (10ms-30s)
@@ -119,8 +138,13 @@ At 100K analyses/day: ~$400-1,400/month. Cache (90% hit) cuts costs by 50-70%.
 - Add error counter metric
 - Configure histogram buckets
 - Implement queue gauge callback
+- Add spans for collectors and Redis ops
 
-**Impact**: Can only see HTTP traffic, blind to core operations. Can't debug production issues.  
+**Impact**:
+- ✅ Basic tracing works (fetch, walk, cache, link check HTTP)
+- ❌ Cannot correlate async jobs visually (must use job_id attribute filter)
+- ❌ No metrics - blind to cache hit rates, error rates, performance trends
+- ❌ Cannot debug production issues without metrics  
 
 ### 4.2 HTML Parser Limitations
 
