@@ -63,16 +63,16 @@ func (h HeadingCounts) IsEmpty() bool {
 
 // AnalysisResult represents the complete analysis of a webpage
 type AnalysisResult struct {
-	Version      string        `json:"version"`      // API version: "v1"
-	URL          string        `json:"url"`          // Analyzed URL
-	HTMLVersion  string        `json:"htmlVersion"`  // Detected HTML version
-	Title        string        `json:"title"`        // Page title
-	Headings     HeadingCounts `json:"headings"`     // Heading counts
-	Links        LinkAnalysis  `json:"links"`        // Link analysis
-	HasLoginForm bool          `json:"hasLoginForm"` // Login form detected
-	AnalyzedAt   time.Time     `json:"analyzedAt"`   // Analysis timestamp
-	CacheHit     bool          `json:"cacheHit"`     // Was result from cache
-	Stale        bool          `json:"stale"`        // Is result stale (degraded mode)
+	Version      string        `json:"version"`        // API version: "v1"
+	URL          string        `json:"url"`            // Analyzed URL
+	HTMLVersion  string        `json:"html_version"`   // Detected HTML version
+	Title        string        `json:"title"`          // Page title
+	Headings     HeadingCounts `json:"headings"`       // Heading counts
+	Links        LinkAnalysis  `json:"links"`          // Link analysis
+	HasLoginForm bool          `json:"has_login_form"` // Login form detected
+	AnalyzedAt   time.Time     `json:"analyzed_at"`    // Analysis timestamp
+	CacheHit     bool          `json:"cache_hit"`      // Was result from cache
+	Stale        bool          `json:"stale"`          // Is result stale (degraded mode)
 
 	// Extension point for future collectors
 	Extra map[string]json.RawMessage `json:"extra,omitempty"`

@@ -35,7 +35,7 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
 
 ---
 
-## Phase 0-8: Core Implementation ✅ COMPLETE
+## Phase 0-9: Core Implementation ✅ COMPLETE
 
 ### Phase 0: Project Setup ✅
 - ✅ Project structure
@@ -79,17 +79,18 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
 - ✅ WaitForJob() for sync mode
 - ✅ Garbage collection for old jobs
 
-### Phase 6: Caching 🚧 PARTIALLY COMPLETE
-- ✅ `internal/cache/cache.go` - Cache interface
+### Phase 6: Caching ✅ COMPLETE
+- ✅ `internal/cache/cache.go` - Simplified cache interface (5 methods, removed 6 unused)
 - ✅ `internal/cache/keys.go` - URL normalization + SHA256
 - ✅ `internal/cache/keys_test.go` - Key generation tests
-- ✅ `internal/cache/memory.go` - LRU cache (307 lines)
+- ✅ `internal/cache/memory.go` - LRU cache with explicit TTL per operation
 - ✅ `internal/cache/memory_test.go` - Memory cache tests
 - ✅ `internal/cache/noop.go` - No-op implementation
-- ❌ `internal/cache/redis.go` - Redis cache implementation
-- ❌ `internal/cache/redis_test.go` - Redis cache tests
-- ❌ `internal/cache/multi.go` - Multi-tier cache (L1=memory, L2=Redis)
-- ❌ `internal/cache/multi_test.go` - Multi-tier cache tests
+- ✅ `internal/cache/redis.go` - Redis cache implementation
+- ✅ `internal/cache/redis_test.go` - Redis cache tests
+- ✅ `internal/cache/redis_integration_test.go` - Redis integration tests
+- ✅ `internal/cache/multi.go` - Multi-tier cache (L1=memory, L2=Redis)
+- ✅ `internal/cache/multi_test.go` - Multi-tier cache tests
 
 ### Phase 7: HTTP Server + REST API ✅
 - ✅ `cmd/serve.go` - Serve subcommand
@@ -117,14 +118,17 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
 
 ## Phase 9: Configuration ✅ COMPLETE
 
-- ✅ `internal/config/config.go` - Config structs
+- ✅ `internal/config/config.go` - Config structs with all modes
 - ✅ `internal/config/defaults.go` - Default values
 - ✅ `internal/config/env.go` - Environment variable loading
-- ✅ `internal/config/env_test.go` - 10 comprehensive tests
-- ✅ Integration with cmd/serve.go
+- ✅ `internal/config/env_test.go` - Comprehensive tests (100% coverage)
+- ✅ Integration with cmd/serve.go and cmd/analyze.go
 - ✅ All ANALYZER_* environment variables supported
-- ✅ Dynamic cache mode (memory/disabled)
+- ✅ Dynamic cache mode (memory/redis/multi/disabled)
 - ✅ Dynamic logger (level + format)
+- ✅ TTL management: PageCacheTTL and LinkCacheTTL (explicit per operation)
+- ✅ JobMaxAge configuration for link check job retention
+- ✅ UserAgent removed from config (hardcoded per component)
 
 ---
 
@@ -295,7 +299,11 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
   - Profile memory usage
 
 ### API Documentation
-- ❌ OpenAPI/Swagger spec (optional)
+- ✅ `api/openapi.yaml` - OpenAPI 3.0 specification
+  - All REST endpoints documented
+  - Request/response schemas
+  - Examples for all operations
+  - Error responses
 - ❌ Postman collection (optional)
 
 ### Testing
@@ -365,7 +373,8 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
 - ✅ All environment variables defined
 - ✅ Config loading from environment
 - ✅ Validation working
-- ⚠️ Redis cache not implemented (config exists)
+- ✅ Redis cache fully implemented (memory/redis/multi/disabled modes)
+- ✅ TTL configuration simplified (PageCacheTTL, LinkCacheTTL)
 - ⚠️ Rate limiting config not wired up
 - ⚠️ OTEL config not wired up
 

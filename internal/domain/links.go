@@ -8,13 +8,13 @@ import (
 
 // LinkAnalysis contains the results of analyzing links in a webpage
 type LinkAnalysis struct {
-	Internal    []string         `json:"internal"`              // Collected internal URLs
-	External    []string         `json:"external"`              // Collected external URLs
-	TotalFound  int              `json:"totalFound"`            // Total discovered (may exceed max)
-	Truncated   bool             `json:"truncated"`             // Hit MaxLinks limit
-	CheckJobID  string           `json:"checkJobID,omitempty"`  // Link check job ID (async)
-	CheckStatus LinkCheckStatus  `json:"checkStatus"`           // Link check status
-	CheckResult *LinkCheckResult `json:"checkResult,omitempty"` // Link check results
+	Internal    []string         `json:"internal"`               // Collected internal URLs
+	External    []string         `json:"external"`               // Collected external URLs
+	TotalFound  int              `json:"total_found"`            // Total discovered (may exceed max)
+	Truncated   bool             `json:"truncated"`              // Hit MaxLinks limit
+	CheckJobID  string           `json:"check_job_id,omitempty"` // Link check job ID (async)
+	CheckStatus LinkCheckStatus  `json:"check_status"`           // Link check status
+	CheckResult *LinkCheckResult `json:"check_result,omitempty"` // Link check results
 }
 
 // InternalCount returns the number of internal links
@@ -48,7 +48,7 @@ type LinkCheckResult struct {
 	Accessible   int         `json:"accessible"`   // Number of accessible links
 	Inaccessible []LinkError `json:"inaccessible"` // Links that failed checks
 	Duration     string      `json:"duration"`     // Time taken (e.g., "2.5s")
-	CompletedAt  time.Time   `json:"completedAt"`  // When check completed
+	CompletedAt  time.Time   `json:"completed_at"` // When check completed
 }
 
 // InaccessibleCount returns the number of inaccessible links
@@ -66,18 +66,18 @@ func (lcr LinkCheckResult) SuccessRate() float64 {
 
 // LinkError describes a link that failed accessibility check
 type LinkError struct {
-	URL        string `json:"url"`                  // The URL that failed
-	StatusCode int    `json:"statusCode,omitempty"` // HTTP status code (if applicable)
-	Reason     string `json:"reason"`               // Reason for failure
+	URL        string `json:"url"`                   // The URL that failed
+	StatusCode int    `json:"status_code,omitempty"` // HTTP status code (if applicable)
+	Reason     string `json:"reason"`                // Reason for failure
 }
 
 // CachedLinkCheck represents a cached result of checking a single link
 type CachedLinkCheck struct {
-	URL        string `json:"url"`                  // The URL that was checked
-	Accessible bool   `json:"accessible"`           // Whether the link is accessible
-	StatusCode int    `json:"statusCode,omitempty"` // HTTP status code (if not accessible)
-	Reason     string `json:"reason,omitempty"`     // Reason for failure (if not accessible)
-	CheckedAt  int64  `json:"checkedAt"`            // Unix timestamp of when check occurred
+	URL        string `json:"url"`                   // The URL that was checked
+	Accessible bool   `json:"accessible"`            // Whether the link is accessible
+	StatusCode int    `json:"status_code,omitempty"` // HTTP status code (if not accessible)
+	Reason     string `json:"reason,omitempty"`      // Reason for failure (if not accessible)
+	CheckedAt  int64  `json:"checked_at"`            // Unix timestamp of when check occurred
 }
 
 // Error implements the error interface

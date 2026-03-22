@@ -1,0 +1,431 @@
+openapi: 3.0.3
+info:
+  title: Page Analyzer API
+  description: |
+    A high-performance web page analyzer that extracts metadata, structure, and validates links.
+
+    Features:
+    - HTML metadata extraction (title, description, language)
+    - Structural analysis (headings, images, forms)
+    - Link extraction and validation
+    - Async link checking with job tracking
+    - Redis caching support
+  version: 1.0.0
+  contact:
+    name: Page Analyzer
+    url: https://github.com/halyph/page-analyzer
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://localhost:8080/api
+    description: API base path
+
+tags:
+  - name: analysis
+    description: Page analysis operations
+  - name: jobs
+    description: Link checking job operations
+  - name: health
+    description: Health check operations
+
+paths:
+  /api/analyze:
+    post:
+      tags:
+        - analysis
+      summary: Analyze a webpage
+      description: |
+        Analyzes a webpage and returns metadata, structure, and optionally validates links.
+
+        Supports three link checking modes:
+        - `disabled`: No link checking
+        - `sync`: Wait for all links to be checked before returning
+        - `async`: Return immediately with a job ID for later polling
+      operationId: analyzeWebpage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisRequest'
+            examples:
+              basic:
+                summary: Basic analysis without link checking
+                value:
+                  url: "https://example.com"
+                  options:
+                    check_links: "disabled"
+              async:
+                summary: Async link checking
+                value:
+                  url: "https://example.com"
+                  options:
+                    check_links: "async"
+                    max_links: 100
+              sync:
+                summary: Sync link checking
+                value:
+                  url: "https://example.com"
+                  options:
+                    check_links: "sync"
+                    max_links: 50
+                    timeout: "30s"
+      responses:
+        '200':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResponse'
+              examples:
+                success:
+                  $ref: '#/components/examples/AnalysisSuccess'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_url:
+                  value:
+                    error: "invalid URL: missing protocol"
+                    code: 400
+                empty_url:
+                  value:
+                    error: "URL is required"
+                    code: 400
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/jobs/{jobId}:
+    get:
+      tags:
+        - jobs
+      summary: Get link checking job status
+      description: |
+        Retrieves the status and results of a link checking job.
+
+        Job statuses:
+        - `pending`: Job is queued but not started
+        - `running`: Job is currently being processed
+        - `completed`: Job finished successfully
+        - `failed`: Job encountered an error
+      operationId: getJobStatus
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Job ID returned from async analysis
+          schema:
+            type: string
+            example: "job_abc123xyz"
+      responses:
+        '200':
+          description: Job found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+              examples:
+                completed:
+                  $ref: '#/components/examples/JobCompleted'
+                running:
+                  $ref: '#/components/examples/JobRunning'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "job not found"
+                code: 404
+
+  /api/health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Returns server health status and version information
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "ok"
+                version: "1.0.0"
+                git_commit: "abc123"
+
+components:
+  schemas:
+    AnalysisRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Target URL to analyze
+          example: "https://example.com"
+        options:
+          $ref: '#/components/schemas/AnalysisOptions'
+
+    AnalysisOptions:
+      type: object
+      properties:
+        check_links:
+          type: string
+          enum: [disabled, sync, async]
+          default: disabled
+          description: Link checking mode
+        max_links:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 10000
+          description: Maximum number of links to check
+
+    AnalysisResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Final URL after redirects
+        version:
+          type: string
+          description: API version
+        html_version:
+          type: string
+          description: HTML version detected
+        title:
+          type: string
+          description: Page title
+        headings:
+          $ref: '#/components/schemas/HeadingsInfo'
+        links:
+          $ref: '#/components/schemas/LinksInfo'
+        has_login_form:
+          type: boolean
+          description: Whether a login form was detected
+        analyzed_at:
+          type: string
+          format: date-time
+          description: Timestamp when analysis was performed
+        cache_hit:
+          type: boolean
+          description: Whether result was served from cache
+        stale:
+          type: boolean
+          description: Whether result is stale (graceful degradation)
+
+    HeadingsInfo:
+      type: object
+      properties:
+        h1:
+          type: integer
+        h2:
+          type: integer
+        h3:
+          type: integer
+        h4:
+          type: integer
+        h5:
+          type: integer
+        h6:
+          type: integer
+
+    LinksInfo:
+      type: object
+      properties:
+        internal:
+          type: array
+          items:
+            type: string
+          description: List of internal links found
+        external:
+          type: array
+          items:
+            type: string
+          description: List of external links found
+        total_found:
+          type: integer
+          description: Total number of links discovered (may exceed max_links)
+        truncated:
+          type: boolean
+          description: Whether link collection was truncated due to max_links
+        check_status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+          description: Status of link checking job
+        check_job_id:
+          type: string
+          description: Job ID for async link checking
+        check_result:
+          $ref: '#/components/schemas/LinkCheckResult'
+
+    LinkCheckResult:
+      type: object
+      properties:
+        checked:
+          type: integer
+          description: Number of links checked
+        accessible:
+          type: integer
+          description: Number of accessible links
+        inaccessible:
+          type: array
+          description: List of links that failed checks
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              status_code:
+                type: integer
+              reason:
+                type: string
+        duration:
+          type: string
+          description: Time taken to check all links
+        completed_at:
+          type: string
+          format: date-time
+          description: When the check was completed
+
+    JobStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique job identifier
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+          description: Current job status
+        urls:
+          type: array
+          items:
+            type: string
+          description: List of URLs being checked
+        base_url:
+          type: string
+          description: Base URL context for the link check
+        result:
+          $ref: '#/components/schemas/LinkCheckResult'
+        created_at:
+          type: string
+          format: date-time
+          description: When the job was created
+        started_at:
+          type: string
+          format: date-time
+          description: When the job started processing
+        completed_at:
+          type: string
+          format: date-time
+          description: When the job completed
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        version:
+          type: string
+          example: "1.0.0"
+        git_commit:
+          type: string
+          example: "abc123"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: integer
+          description: HTTP status code
+
+  examples:
+    AnalysisSuccess:
+      summary: Successful analysis
+      value:
+        url: "https://example.com"
+        version: "v1"
+        html_version: "HTML5"
+        title: "Example Domain"
+        headings:
+          h1: 1
+          h2: 0
+          h3: 0
+          h4: 0
+          h5: 0
+          h6: 0
+        links:
+          internal: []
+          external:
+            - "https://www.iana.org/domains/example"
+          total_found: 1
+          truncated: false
+          check_status: "completed"
+          check_result:
+            checked: 1
+            accessible: 1
+            inaccessible: []
+            duration: "0.5s"
+            completed_at: "2026-03-22T10:00:00Z"
+        has_login_form: false
+        analyzed_at: "2026-03-22T10:00:00Z"
+        cache_hit: false
+        stale: false
+
+    JobCompleted:
+      summary: Completed job
+      value:
+        id: "job_abc123xyz"
+        status: "completed"
+        urls:
+          - "https://example.com/page1"
+          - "https://example.com/page2"
+          - "https://example.com/broken"
+        base_url: "https://example.com"
+        result:
+          checked: 3
+          accessible: 2
+          inaccessible:
+            - url: "https://example.com/broken"
+              status_code: 404
+              reason: "HTTP 404"
+          duration: "1.2s"
+          completed_at: "2026-03-22T10:00:00Z"
+        created_at: "2026-03-22T09:59:58Z"
+        started_at: "2026-03-22T09:59:58Z"
+        completed_at: "2026-03-22T10:00:00Z"
+
+    JobRunning:
+      summary: Job in progress
+      value:
+        id: "job_abc123xyz"
+        status: "in_progress"
+        urls:
+          - "https://example.com/page1"
+          - "https://example.com/page2"
+        base_url: "https://example.com"
+        created_at: "2026-03-22T09:59:58Z"
+        started_at: "2026-03-22T09:59:58Z"
