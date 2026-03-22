@@ -28,7 +28,6 @@ func Load() Config {
 			Workers:      envInt("ANALYZER_CHECK_WORKERS", 20),
 			QueueSize:    envInt("ANALYZER_QUEUE_SIZE", 100),
 			MaxLinks:     envInt("ANALYZER_MAX_LINKS", 10000),
-			SyncLimit:    envInt("ANALYZER_SYNC_LIMIT", 10),
 			JobWorkers:   envInt("ANALYZER_JOB_WORKERS", 10),
 			JobMaxAge:    envDuration("ANALYZER_JOB_MAX_AGE", 10*time.Minute),
 		},
@@ -37,13 +36,7 @@ func Load() Config {
 			PageCacheTTL:    envDuration("ANALYZER_PAGE_CACHE_TTL", 1*time.Hour),
 			LinkCacheTTL:    envDuration("ANALYZER_LINK_CACHE_TTL", 5*time.Minute),
 			RedisAddr:       envString("ANALYZER_REDIS_ADDR", "redis://localhost:6379/0"),
-			RedisPassword:   envString("ANALYZER_REDIS_PASSWORD", ""),
 			MemoryCacheSize: envInt("ANALYZER_MEMORY_CACHE_SIZE", 100),
-		},
-		RateLimiting: RateLimitingConfig{
-			Enabled: envBool("ANALYZER_RATE_LIMIT_ENABLED", true),
-			RPS:     envInt("ANALYZER_RATE_LIMIT_RPS", 10),
-			Burst:   envInt("ANALYZER_RATE_LIMIT_BURST", 20),
 		},
 		Observability: ObservabilityConfig{
 			LogLevel:       envString("ANALYZER_LOG_LEVEL", LogLevelInfo),
@@ -51,10 +44,6 @@ func Load() Config {
 			OTELEnabled:    envBool("ANALYZER_OTEL_ENABLED", false),
 			OTELEndpoint:   envString("ANALYZER_OTEL_ENDPOINT", "localhost:4318"),
 			MetricsEnabled: envBool("ANALYZER_METRICS_ENABLED", true),
-		},
-		Degradation: DegradationConfig{
-			AllowStale:   envBool("ANALYZER_ALLOW_STALE", true),
-			MaxStaleness: envDuration("ANALYZER_MAX_STALENESS", 24*time.Hour),
 		},
 	}
 }
@@ -66,9 +55,7 @@ type Config struct {
 	Processing    ProcessingConfig
 	LinkChecking  LinkCheckingConfig
 	Caching       CachingConfig
-	RateLimiting  RateLimitingConfig
 	Observability ObservabilityConfig
-	Degradation   DegradationConfig
 }
 
 // ServerConfig holds HTTP server configuration
@@ -94,12 +81,11 @@ type FetchingConfig struct {
 
 // LinkCheckingConfig holds configuration for link checking
 type LinkCheckingConfig struct {
-	CheckMode    string        // sync, async, hybrid, disabled
+	CheckMode    string        // sync, async, disabled
 	CheckTimeout time.Duration // HTTP request timeout for individual link checks
 	Workers      int           // Number of concurrent worker goroutines
 	QueueSize    int           // Job queue buffer size
 	MaxLinks     int           // Maximum links to check per request
-	SyncLimit    int           // For hybrid mode: check first N synchronously
 	JobWorkers   int           // Concurrent checks within a single job
 	JobMaxAge    time.Duration // How long to keep completed jobs in memory
 }
@@ -109,16 +95,8 @@ type CachingConfig struct {
 	Mode            string        // memory, redis, multi, disabled
 	PageCacheTTL    time.Duration // TTL for HTML page analysis results
 	LinkCacheTTL    time.Duration // TTL for individual link check results
-	RedisAddr       string
-	RedisPassword   string
+	RedisAddr       string        // Redis URL (supports auth: redis://:password@host:port/db)
 	MemoryCacheSize int
-}
-
-// RateLimitingConfig holds configuration for rate limiting
-type RateLimitingConfig struct {
-	Enabled bool
-	RPS     int
-	Burst   int
 }
 
 // ObservabilityConfig holds configuration for logging, metrics, and tracing
@@ -128,10 +106,4 @@ type ObservabilityConfig struct {
 	OTELEnabled    bool
 	OTELEndpoint   string
 	MetricsEnabled bool
-}
-
-// DegradationConfig holds configuration for graceful degradation
-type DegradationConfig struct {
-	AllowStale   bool
-	MaxStaleness time.Duration
 }

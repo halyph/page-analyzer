@@ -40,18 +40,10 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, 1*time.Hour, cfg.Caching.PageCacheTTL)
 	assert.Equal(t, 5*time.Minute, cfg.Caching.LinkCacheTTL)
 
-	// Rate limiting defaults
-	assert.True(t, cfg.RateLimiting.Enabled)
-	assert.Equal(t, 10, cfg.RateLimiting.RPS)
-
 	// Observability defaults
 	assert.Equal(t, LogLevelInfo, cfg.Observability.LogLevel)
 	assert.Equal(t, LogFormatJSON, cfg.Observability.LogFormat)
 	assert.False(t, cfg.Observability.OTELEnabled)
-
-	// Degradation defaults
-	assert.True(t, cfg.Degradation.AllowStale)
-	assert.Equal(t, 24*time.Hour, cfg.Degradation.MaxStaleness)
 }
 
 func TestLoad_FromEnv(t *testing.T) {
@@ -86,7 +78,7 @@ func TestLoad_InvalidValues_Panic(t *testing.T) {
 	}{
 		{"invalid_int", "ANALYZER_CHECK_WORKERS", "invalid"},
 		{"invalid_int64", "ANALYZER_MAX_BODY_SIZE", "not-a-number"},
-		{"invalid_bool", "ANALYZER_RATE_LIMIT_ENABLED", "maybe"},
+		{"invalid_bool", "ANALYZER_OTEL_ENABLED", "maybe"},
 		{"invalid_duration", "ANALYZER_PAGE_CACHE_TTL", "forever"},
 	}
 
