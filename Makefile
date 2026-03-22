@@ -204,7 +204,13 @@ demo-infra: ## Start infrastructure (OTEL Collector, Jaeger, Prometheus, Grafana
 .PHONY: demo-run
 demo-run: build ## Run analyzer locally with OTEL enabled
 	@echo "${GREEN}Starting Page Analyzer with OpenTelemetry...${RESET}"
-	@echo "${CYAN}Sending traces + metrics to OTEL Collector${RESET}"
+	@echo ""
+	@echo "${CYAN}Application:${RESET}"
+	@echo "  Analyzer UI:   ${YELLOW}http://localhost:8080${RESET}"
+	@echo ""
+	@echo "${CYAN}View telemetry:${RESET}"
+	@echo "  Jaeger UI:      ${YELLOW}http://localhost:16686${RESET}"
+	@echo "  Grafana:        ${YELLOW}http://localhost:3000${RESET}"
 	@echo ""
 	ANALYZER_OTEL_ENABLED=true \
 	ANALYZER_OTEL_ENDPOINT=localhost:4318 \
