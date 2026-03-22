@@ -164,8 +164,13 @@ App (OTEL SDK) → OTEL Collector → Prometheus (metrics) + Tempo (traces)
   - Helper functions for common span patterns
   - Span attribute constants (semantic conventions)
   - Context propagation utilities
-- ⚠️ HTTP instrumentation with otelhttp.NewHandler - not added yet
-- ⚠️ Custom spans for operations - instrumentation points not added yet
+- ✅ Custom spans for operations:
+  - `fetcher.Fetch` - HTTP requests with status, redirects, body size
+  - `analyzer.Analyze` - Full analysis flow with cache tracking
+  - `cache.GetHTML` / `cache.SetHTML` - Cache operations with hit/miss
+  - `linkChecker.Submit` - Link checking job submission
+  - `walker.Walk` - HTML parsing and collector execution
+- ⚠️ HTTP instrumentation with otelhttp.NewHandler - not added yet (optional)
 - ⚠️ Tracing tests - not implemented
 
 ### Enhanced Logging
