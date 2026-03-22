@@ -135,7 +135,7 @@ Configure via environment variables. Key settings:
 | `ANALYZER_OTEL_ENDPOINT` | `localhost:4318` | OTLP endpoint |
 | `ANALYZER_METRICS_ENABLED` | `false` | Enable metrics |
 
-See [TASK_AND_PLAN.md](TASK_AND_PLAN.md) for complete reference.
+See [docs/DECISIONS.md](docs/DECISIONS.md) for design decisions and architecture details.
 
 ## Development
 
