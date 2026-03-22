@@ -118,6 +118,22 @@ func runServe(c *cli.Context) error {
 	return runServerWithGracefulShutdown(srv, cfg, logger)
 }
 
+// parseLogLevel converts a string log level to slog.Level
+func parseLogLevel(level string) slog.Level {
+	switch level {
+	case config.LogLevelDebug:
+		return slog.LevelDebug
+	case config.LogLevelInfo:
+		return slog.LevelInfo
+	case config.LogLevelWarn:
+		return slog.LevelWarn
+	case config.LogLevelError:
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
 func setupLogger(cfg config.Config) *slog.Logger {
 	logLevel := parseLogLevel(cfg.Observability.LogLevel)
 	var handler slog.Handler
