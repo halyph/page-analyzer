@@ -101,11 +101,6 @@ func GenerateHTMLKey(rawURL string) (string, error) {
 	return GenerateKey("html", rawURL)
 }
 
-// GenerateLinkCheckKey generates a cache key for link check results
-func GenerateLinkCheckKey(jobID string) string {
-	return "links:" + jobID
-}
-
 // GenerateCachedLinkKey generates a cache key for an individual cached link check
 func GenerateCachedLinkKey(url string) string {
 	// Use hash of URL to keep key size reasonable

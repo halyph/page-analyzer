@@ -28,9 +28,9 @@ func skipIfNoRedis(t *testing.T) string {
 	}
 	defer cache.Close()
 
-	// Clean up test database
+	// Clean up test database using Redis client directly
 	ctx := context.Background()
-	_ = cache.Clear(ctx)
+	_ = cache.client.FlushDB(ctx).Err()
 
 	return redisURL
 }
@@ -92,111 +92,6 @@ func TestRedisCache_HTMLAnalysis(t *testing.T) {
 	assert.Equal(t, result.Title, cached.Title)
 	assert.Equal(t, result.Headings, cached.Headings)
 	assert.Equal(t, result.HasLoginForm, cached.HasLoginForm)
-
-	// Check stats
-	stats := cache.Stats()
-	assert.Equal(t, int64(1), stats.Hits)
-	assert.Equal(t, int64(1), stats.Misses)
-	assert.Greater(t, stats.Entries, int64(0))
-}
-
-func TestRedisCache_LinkCheck(t *testing.T) {
-	redisURL := skipIfNoRedis(t)
-
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
-	require.NoError(t, err)
-	defer cache.Close()
-
-	ctx := context.Background()
-	jobID := "test-job-123"
-
-	// Test cache miss
-	_, err = cache.GetLinkCheck(ctx, jobID)
-	assert.ErrorIs(t, err, ErrCacheMiss)
-
-	// Store result
-	result := &domain.LinkCheckResult{
-		Checked:    10,
-		Accessible: 8,
-		Inaccessible: []domain.LinkError{
-			{URL: "https://broken.com", StatusCode: 404, Reason: "404"},
-			{URL: "https://timeout.com", Reason: "timeout"},
-		},
-		Duration: "2.5s",
-	}
-
-	err = cache.SetLinkCheck(ctx, jobID, result, 5*time.Minute)
-	assert.NoError(t, err)
-
-	// Retrieve result
-	cached, err := cache.GetLinkCheck(ctx, jobID)
-	assert.NoError(t, err)
-	assert.Equal(t, result.Checked, cached.Checked)
-	assert.Equal(t, result.Accessible, cached.Accessible)
-	assert.Equal(t, len(result.Inaccessible), len(cached.Inaccessible))
-	assert.Equal(t, result.Duration, cached.Duration)
-}
-
-func TestRedisCache_Delete(t *testing.T) {
-	redisURL := skipIfNoRedis(t)
-
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
-	require.NoError(t, err)
-	defer cache.Close()
-
-	ctx := context.Background()
-	url := "https://example.com"
-
-	// Store result
-	result := &domain.AnalysisResult{
-		URL:   url,
-		Title: "Test",
-	}
-	err = cache.SetHTML(ctx, url, result, 1*time.Hour)
-	require.NoError(t, err)
-
-	// Verify stored
-	_, err = cache.GetHTML(ctx, url)
-	assert.NoError(t, err)
-
-	// Delete
-	err = cache.Delete(ctx, url)
-	assert.NoError(t, err)
-
-	// Verify deleted
-	_, err = cache.GetHTML(ctx, url)
-	assert.ErrorIs(t, err, ErrCacheMiss)
-}
-
-func TestRedisCache_Clear(t *testing.T) {
-	redisURL := skipIfNoRedis(t)
-
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
-	require.NoError(t, err)
-	defer cache.Close()
-
-	ctx := context.Background()
-
-	// Store some data
-	result := &domain.AnalysisResult{
-		URL:   "https://example.com",
-		Title: "Test",
-	}
-	err = cache.SetHTML(ctx, "https://example.com", result, 1*time.Hour)
-	require.NoError(t, err)
-
-	// Clear cache
-	err = cache.Clear(ctx)
-	assert.NoError(t, err)
-
-	// Stats should be reset immediately after clear
-	stats := cache.Stats()
-	assert.Equal(t, int64(0), stats.Hits)
-	assert.Equal(t, int64(0), stats.Misses)
-
-	// Verify data cleared
-	_, err = cache.GetHTML(ctx, "https://example.com")
-	assert.ErrorIs(t, err, ErrCacheMiss)
 }
 
 func TestRedisCache_TTL(t *testing.T) {
@@ -227,47 +122,6 @@ func TestRedisCache_TTL(t *testing.T) {
 	// Verify expired
 	_, err = cache.GetHTML(ctx, url)
 	assert.ErrorIs(t, err, ErrCacheMiss)
-}
-
-func TestRedisCache_Stats(t *testing.T) {
-	redisURL := skipIfNoRedis(t)
-
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
-	require.NoError(t, err)
-	defer cache.Close()
-
-	ctx := context.Background()
-
-	// Initial stats
-	stats := cache.Stats()
-	initialHits := stats.Hits
-	initialMisses := stats.Misses
-
-	// Cause a miss
-	_, err = cache.GetHTML(ctx, "https://miss.com")
-	assert.ErrorIs(t, err, ErrCacheMiss)
-
-	// Store and retrieve (hit)
-	result := &domain.AnalysisResult{
-		URL:   "https://hit.com",
-		Title: "Hit",
-	}
-	err = cache.SetHTML(ctx, "https://hit.com", result, 1*time.Hour)
-	require.NoError(t, err)
-
-	_, err = cache.GetHTML(ctx, "https://hit.com")
-	require.NoError(t, err)
-
-	// Check updated stats
-	stats = cache.Stats()
-	assert.Equal(t, initialHits+1, stats.Hits)
-	assert.Equal(t, initialMisses+1, stats.Misses)
-
-	// Verify hit rate calculation
-	if stats.Hits+stats.Misses > 0 {
-		expectedHitRate := float64(stats.Hits) / float64(stats.Hits+stats.Misses)
-		assert.InDelta(t, expectedHitRate, stats.HitRate, 0.01)
-	}
 }
 
 func TestRedisCache_ConcurrentAccess(t *testing.T) {
@@ -301,20 +155,6 @@ func TestRedisCache_ConcurrentAccess(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// No panics = success
-}
-
-func TestRedisCache_Health(t *testing.T) {
-	redisURL := skipIfNoRedis(t)
-
-	cache, err := NewRedisCache(redisURL, 1*time.Hour)
-	require.NoError(t, err)
-	defer cache.Close()
-
-	ctx := context.Background()
-
-	// Health check should succeed
-	err = cache.Health(ctx)
-	assert.NoError(t, err)
 }
 
 func TestRedisCache_Close(t *testing.T) {

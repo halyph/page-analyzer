@@ -25,16 +25,6 @@ func (nc *NoOpCache) SetHTML(ctx context.Context, url string, result *domain.Ana
 	return nil
 }
 
-// GetLinkCheck always returns cache miss
-func (nc *NoOpCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
-	return nil, ErrCacheMiss
-}
-
-// SetLinkCheck does nothing
-func (nc *NoOpCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
-	return nil
-}
-
 // GetCachedLink always returns cache miss
 func (nc *NoOpCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
 	return nil, ErrCacheMiss
@@ -42,26 +32,6 @@ func (nc *NoOpCache) GetCachedLink(ctx context.Context, url string) (*domain.Cac
 
 // SetCachedLink does nothing
 func (nc *NoOpCache) SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error {
-	return nil
-}
-
-// Delete does nothing
-func (nc *NoOpCache) Delete(ctx context.Context, url string) error {
-	return nil
-}
-
-// Clear does nothing
-func (nc *NoOpCache) Clear(ctx context.Context) error {
-	return nil
-}
-
-// Stats returns zero stats
-func (nc *NoOpCache) Stats() CacheStats {
-	return CacheStats{}
-}
-
-// Health always reports healthy
-func (nc *NoOpCache) Health(ctx context.Context) error {
 	return nil
 }
 

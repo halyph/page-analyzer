@@ -54,10 +54,6 @@ func TestMemoryCache_GetHTML_Miss(t *testing.T) {
 
 	_, err := cache.GetHTML(ctx, "https://nonexistent.com")
 	assert.ErrorIs(t, err, ErrCacheMiss)
-
-	stats := cache.Stats()
-	assert.Equal(t, int64(0), stats.Hits)
-	assert.Equal(t, int64(1), stats.Misses)
 }
 
 func TestMemoryCache_Expiration(t *testing.T) {
@@ -98,18 +94,11 @@ func TestMemoryCache_LRUEviction(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	stats := cache.Stats()
-	assert.Equal(t, int64(3), stats.Entries)
-
 	// Add 4th entry - should evict oldest
 	url4 := "https://example.com/page4"
 	result4 := &domain.AnalysisResult{URL: url4}
 	err := cache.SetHTML(ctx, url4, result4, 0)
 	require.NoError(t, err)
-
-	stats = cache.Stats()
-	assert.Equal(t, int64(3), stats.Entries)
-	assert.Equal(t, int64(1), stats.Evictions)
 
 	// First entry should be evicted
 	_, err = cache.GetHTML(ctx, "https://example.com/page1")
@@ -146,101 +135,6 @@ func TestMemoryCache_UpdateExisting(t *testing.T) {
 	cached, err := cache.GetHTML(ctx, url)
 	require.NoError(t, err)
 	assert.Equal(t, "Second", cached.Title)
-
-	// Should still only have 1 entry
-	stats := cache.Stats()
-	assert.Equal(t, int64(1), stats.Entries)
-}
-
-func TestMemoryCache_LinkCheck(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	ctx := context.Background()
-
-	jobID := "test-job-123"
-	result := &domain.LinkCheckResult{
-		Checked:    10,
-		Accessible: 9,
-		Duration:   "1s",
-	}
-
-	// Set
-	err := cache.SetLinkCheck(ctx, jobID, result, 0)
-	require.NoError(t, err)
-
-	// Get
-	cached, err := cache.GetLinkCheck(ctx, jobID)
-	require.NoError(t, err)
-	assert.Equal(t, result.Checked, cached.Checked)
-	assert.Equal(t, result.Accessible, cached.Accessible)
-}
-
-func TestMemoryCache_Delete(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	ctx := context.Background()
-
-	url := "https://example.com"
-	result := &domain.AnalysisResult{URL: url}
-
-	err := cache.SetHTML(ctx, url, result, 0)
-	require.NoError(t, err)
-
-	// Delete
-	err = cache.Delete(ctx, url)
-	require.NoError(t, err)
-
-	// Should be gone
-	_, err = cache.GetHTML(ctx, url)
-	assert.ErrorIs(t, err, ErrCacheMiss)
-}
-
-func TestMemoryCache_Clear(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	ctx := context.Background()
-
-	// Add multiple entries
-	for i := 1; i <= 5; i++ {
-		url := "https://example.com/page" + string(rune('0'+i))
-		result := &domain.AnalysisResult{URL: url}
-		err := cache.SetHTML(ctx, url, result, 0)
-		require.NoError(t, err)
-	}
-
-	stats := cache.Stats()
-	assert.Equal(t, int64(5), stats.Entries)
-
-	// Clear all
-	err := cache.Clear(ctx)
-	require.NoError(t, err)
-
-	stats = cache.Stats()
-	assert.Equal(t, int64(0), stats.Entries)
-}
-
-func TestMemoryCache_Stats(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	ctx := context.Background()
-
-	url := "https://example.com"
-	result := &domain.AnalysisResult{URL: url, Title: "Test"}
-
-	// Set
-	err := cache.SetHTML(ctx, url, result, 0)
-	require.NoError(t, err)
-
-	// Hit
-	_, err = cache.GetHTML(ctx, url)
-	require.NoError(t, err)
-
-	// Miss
-	_, err = cache.GetHTML(ctx, "https://other.com")
-	assert.Error(t, err)
-
-	stats := cache.Stats()
-	assert.Equal(t, int64(1), stats.Hits)
-	assert.Equal(t, int64(1), stats.Misses)
-	assert.Equal(t, int64(1), stats.Entries)
-	assert.Equal(t, 0.5, stats.HitRate)
-	assert.Greater(t, stats.AvgItemSize, int64(0))
 }
 
 func TestMemoryCache_CleanupExpired(t *testing.T) {
@@ -255,18 +149,12 @@ func TestMemoryCache_CleanupExpired(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	stats := cache.Stats()
-	assert.Equal(t, int64(3), stats.Entries)
-
 	// Wait for expiration
 	time.Sleep(100 * time.Millisecond)
 
 	// Cleanup
 	removed := cache.CleanupExpired()
 	assert.Equal(t, 3, removed)
-
-	stats = cache.Stats()
-	assert.Equal(t, int64(0), stats.Entries)
 }
 
 func TestMemoryCache_URLNormalization(t *testing.T) {
@@ -286,20 +174,6 @@ func TestMemoryCache_URLNormalization(t *testing.T) {
 	cached, err := cache.GetHTML(ctx, url2)
 	require.NoError(t, err)
 	assert.NotNil(t, cached)
-
-	// Should count as a hit
-	stats := cache.Stats()
-	assert.Equal(t, int64(1), stats.Hits)
-}
-
-func TestMemoryCache_Health(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	defer cache.Close()
-	ctx := context.Background()
-
-	// Health should always return nil for memory cache
-	err := cache.Health(ctx)
-	assert.NoError(t, err)
 }
 
 func TestMemoryCache_Close(t *testing.T) {
@@ -359,27 +233,4 @@ func TestMemoryCache_MaxTTLEnforcement(t *testing.T) {
 	// The actual TTL is capped at 24 hours internally
 	// We can't directly test the TTL, but we can verify it doesn't cause issues
 	// and that the entry was stored successfully
-}
-
-func TestMemoryCache_MaxTTLEnforcement_LinkCheck(t *testing.T) {
-	cache := NewMemoryCache(10, 5*time.Minute)
-	defer cache.Close()
-	ctx := context.Background()
-
-	jobID := "test-job-123"
-	result := &domain.LinkCheckResult{
-		Checked:    10,
-		Accessible: 9,
-		Duration:   "1s",
-	}
-
-	// Try to set with extremely long TTL
-	extremeTTL := 1000 * time.Hour
-	err := cache.SetLinkCheck(ctx, jobID, result, extremeTTL)
-	require.NoError(t, err)
-
-	// Entry should exist
-	cached, err := cache.GetLinkCheck(ctx, jobID)
-	require.NoError(t, err)
-	assert.Equal(t, 10, cached.Checked)
 }

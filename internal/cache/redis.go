@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/domain"
@@ -15,11 +14,6 @@ import (
 type RedisCache struct {
 	client *redis.Client
 	ttl    time.Duration
-
-	// Statistics
-	hits      atomic.Int64
-	misses    atomic.Int64
-	evictions atomic.Int64
 }
 
 // NewRedisCache creates a new Redis cache client
@@ -68,7 +62,6 @@ func NewRedisCache(redisURL string, ttl time.Duration) (*RedisCache, error) {
 func redisGet[T any](rc *RedisCache, ctx context.Context, key string) (*T, error) {
 	data, err := rc.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		rc.misses.Add(1)
 		return nil, ErrCacheMiss
 	}
 	if err != nil {
@@ -80,7 +73,6 @@ func redisGet[T any](rc *RedisCache, ctx context.Context, key string) (*T, error
 		return nil, fmt.Errorf("unmarshal failed: %w", err)
 	}
 
-	rc.hits.Add(1)
 	return &result, nil
 }
 
@@ -111,19 +103,6 @@ func (rc *RedisCache) SetHTML(ctx context.Context, url string, result *domain.An
 	return redisSet(rc, ctx, htmlKey(url), result, ttl)
 }
 
-// GetLinkCheck retrieves cached link check result
-func (rc *RedisCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
-	return redisGet[domain.LinkCheckResult](rc, ctx, linkCheckKey(jobID))
-}
-
-// SetLinkCheck stores link check result in cache
-func (rc *RedisCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
-	if ttl <= 0 {
-		ttl = DefaultLinkCheckTTL
-	}
-	return redisSet(rc, ctx, linkCheckKey(jobID), result, ttl)
-}
-
 // GetCachedLink retrieves a cached individual link check result
 func (rc *RedisCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
 	return redisGet[domain.CachedLinkCheck](rc, ctx, cachedLinkKey(url))
@@ -137,69 +116,9 @@ func (rc *RedisCache) SetCachedLink(ctx context.Context, url string, result *dom
 	return redisSet(rc, ctx, cachedLinkKey(url), result, ttl)
 }
 
-// Delete removes a cached entry
-func (rc *RedisCache) Delete(ctx context.Context, url string) error {
-	keys := []string{
-		htmlKey(url),
-		linkCheckKey(url),
-	}
-
-	if err := rc.client.Del(ctx, keys...).Err(); err != nil {
-		return fmt.Errorf("redis delete failed: %w", err)
-	}
-
-	return nil
-}
-
-// Clear removes all cached entries (flushes the entire DB - use with caution!)
-func (rc *RedisCache) Clear(ctx context.Context) error {
-	if err := rc.client.FlushDB(ctx).Err(); err != nil {
-		return fmt.Errorf("redis flush failed: %w", err)
-	}
-
-	// Reset statistics
-	rc.hits.Store(0)
-	rc.misses.Store(0)
-	rc.evictions.Store(0)
-
-	return nil
-}
-
-// Stats returns cache statistics
-func (rc *RedisCache) Stats() CacheStats {
-	hits := rc.hits.Load()
-	misses := rc.misses.Load()
-	total := hits + misses
-
-	var hitRate float64
-	if total > 0 {
-		hitRate = float64(hits) / float64(total)
-	}
-
-	// Get Redis stats
-	info, err := rc.client.DBSize(context.Background()).Result()
-	entries := int64(0)
-	if err == nil {
-		entries = info
-	}
-
-	return CacheStats{
-		Hits:      hits,
-		Misses:    misses,
-		Entries:   entries,
-		Evictions: rc.evictions.Load(),
-		HitRate:   hitRate,
-	}
-}
-
 // Close closes the Redis connection
 func (rc *RedisCache) Close() error {
 	return rc.client.Close()
-}
-
-// Health checks Redis availability
-func (rc *RedisCache) Health(ctx context.Context) error {
-	return rc.Ping(ctx)
 }
 
 // Ping checks Redis connectivity
@@ -215,10 +134,6 @@ func htmlKey(url string) string {
 		return fmt.Sprintf("html:%s", url)
 	}
 	return key
-}
-
-func linkCheckKey(jobID string) string {
-	return GenerateLinkCheckKey(jobID)
 }
 
 func cachedLinkKey(url string) string {

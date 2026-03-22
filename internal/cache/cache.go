@@ -19,7 +19,6 @@ var (
 // Default TTL values for different cache entry types
 const (
 	DefaultHTMLCacheTTL     = 1 * time.Hour
-	DefaultLinkCheckTTL     = 5 * time.Minute
 	DefaultCachedLinkTTL    = 5 * time.Minute
 	DefaultMultiBackfillTTL = 1 * time.Hour
 )
@@ -32,40 +31,12 @@ type Cache interface {
 	// SetHTML stores HTML analysis result in cache
 	SetHTML(ctx context.Context, url string, result *domain.AnalysisResult, ttl time.Duration) error
 
-	// GetLinkCheck retrieves cached link check result
-	GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error)
-
-	// SetLinkCheck stores link check result in cache
-	SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error
-
 	// GetCachedLink retrieves a cached individual link check result
 	GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error)
 
 	// SetCachedLink stores an individual link check result in cache
 	SetCachedLink(ctx context.Context, url string, result *domain.CachedLinkCheck, ttl time.Duration) error
 
-	// Delete removes a cached entry
-	Delete(ctx context.Context, url string) error
-
-	// Clear removes all cached entries
-	Clear(ctx context.Context) error
-
-	// Stats returns cache statistics
-	Stats() CacheStats
-
-	// Health checks cache availability
-	Health(ctx context.Context) error
-
 	// Close closes the cache and releases resources
 	Close() error
-}
-
-// CacheStats provides cache performance metrics
-type CacheStats struct {
-	Hits        int64
-	Misses      int64
-	Entries     int64
-	Evictions   int64
-	HitRate     float64
-	AvgItemSize int64
 }

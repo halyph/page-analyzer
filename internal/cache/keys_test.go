@@ -132,13 +132,6 @@ func TestGenerateHTMLKey_Consistency(t *testing.T) {
 	assert.Equal(t, key1, key2)
 }
 
-func TestGenerateLinkCheckKey(t *testing.T) {
-	jobID := "test-job-123"
-	key := GenerateLinkCheckKey(jobID)
-
-	assert.Equal(t, "links:test-job-123", key)
-}
-
 func TestSortQueryParams(t *testing.T) {
 	tests := []struct {
 		name     string

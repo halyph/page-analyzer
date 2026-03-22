@@ -178,23 +178,6 @@ func (mc *MemoryCache) SetHTML(ctx context.Context, url string, result *domain.A
 	return memorySet(mc, key, result, ttl)
 }
 
-// GetLinkCheck retrieves cached link check result
-func (mc *MemoryCache) GetLinkCheck(ctx context.Context, jobID string) (*domain.LinkCheckResult, error) {
-	key := GenerateLinkCheckKey(jobID)
-	return memoryGet[domain.LinkCheckResult](mc, key)
-}
-
-// SetLinkCheck stores link check result in cache
-func (mc *MemoryCache) SetLinkCheck(ctx context.Context, jobID string, result *domain.LinkCheckResult, ttl time.Duration) error {
-	key := GenerateLinkCheckKey(jobID)
-
-	if ttl == 0 {
-		ttl = DefaultLinkCheckTTL
-	}
-
-	return memorySet(mc, key, result, ttl)
-}
-
 // GetCachedLink retrieves a cached individual link check result
 func (mc *MemoryCache) GetCachedLink(ctx context.Context, url string) (*domain.CachedLinkCheck, error) {
 	key := GenerateCachedLinkKey(url)
@@ -210,70 +193,6 @@ func (mc *MemoryCache) SetCachedLink(ctx context.Context, url string, result *do
 	}
 
 	return memorySet(mc, key, result, ttl)
-}
-
-// Delete removes a cached entry
-func (mc *MemoryCache) Delete(ctx context.Context, url string) error {
-	key, err := GenerateHTMLKey(url)
-	if err != nil {
-		return err
-	}
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	if entry, exists := mc.items[key]; exists {
-		mc.removeEntry(entry)
-	}
-
-	return nil
-}
-
-// Clear removes all cached entries
-func (mc *MemoryCache) Clear(ctx context.Context) error {
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	mc.items = make(map[string]*cacheEntry)
-	mc.lru.Init()
-
-	return nil
-}
-
-// Stats returns cache statistics
-func (mc *MemoryCache) Stats() CacheStats {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	total := mc.hits + mc.misses
-	hitRate := 0.0
-	if total > 0 {
-		hitRate = float64(mc.hits) / float64(total)
-	}
-
-	// Calculate average item size
-	var totalSize int64
-	for _, entry := range mc.items {
-		totalSize += entry.size
-	}
-	avgSize := int64(0)
-	if len(mc.items) > 0 {
-		avgSize = totalSize / int64(len(mc.items))
-	}
-
-	return CacheStats{
-		Hits:        mc.hits,
-		Misses:      mc.misses,
-		Entries:     int64(len(mc.items)),
-		Evictions:   mc.evictions,
-		HitRate:     hitRate,
-		AvgItemSize: avgSize,
-	}
-}
-
-// Health checks cache availability (always healthy for memory cache)
-func (mc *MemoryCache) Health(ctx context.Context) error {
-	return nil
 }
 
 // Close stops the cleanup goroutine and releases resources
