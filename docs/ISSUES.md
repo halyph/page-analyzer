@@ -32,9 +32,46 @@
 
 ### 2.3 Authentication
 
-**Problem**: API is completely open  
-**Risk**: Anyone can use the service without restriction  
-**Fix**: Add API key authentication or JWT tokens  
+**Problem**: API is completely open
+**Risk**: Anyone can use the service without restriction
+**Fix**: Add API key authentication or JWT tokens
+
+### 2.4 Cost Considerations for Public Deployment
+
+**Warning**: Deploying this service publicly can become expensive  
+
+**Factors**:
+
+- **Many users = many jobs**: Each analysis spawns async jobs with worker pools
+- **Cache growth**: Popular sites cached, but unique URLs grow cache size unbounded
+- **Memory usage**: In-memory job storage + LRU cache scales with traffic
+- **Redis costs**: Multi-instance deployments with Redis cache can be costly at scale
+- **Bandwidth**: Fetching full HTML pages + checking all links = high egress traffic
+- **Compute**: Link checking is CPU/network intensive (20+ workers per job)
+
+**Recommendations**:
+
+- Implement rate limiting (see 2.2) to control resource usage per user
+- Set aggressive cache TTLs and size limits
+- Use Redis with eviction policies (LRU/LFU) to cap memory
+- Monitor costs closely in cloud environments (bandwidth, compute, storage)
+- Consider per-user quotas or paid tiers for high-volume usage
+- Offload link checking to background workers with job queues for cost-effective scaling
+
+**Development vs Production**: Demo mode runs fine locally, but production at scale requires cost management strategy.
+
+**Cost Estimation** (example with 5,000 analyses/day):
+
+```
+Compute:    5,000 × 6s/analysis = 8.3 CPU-hours/day × $0.05 = $13/month
+Bandwidth:  5,000 × 0.5 MB = 2.5 GB/day × $0.09/GB = $7/month
+Redis:      Optional, ~$30-50/month
+Total:      $20-70/month (scales linearly with traffic)
+```
+
+**Your formula**: `monthly_cost = (analyses_per_day × 6s / 3600 × $0.05 × 30) + (analyses_per_day × 0.5MB / 1024 × $0.09 × 30) + redis`
+
+At 100K analyses/day: ~$400-1,400/month. Cache (90% hit) cuts costs by 50-70%.
 
 ## 3. High Priority
 
@@ -59,8 +96,31 @@
 
 ### 4.1 Observability Improvements
 
-**Current State**: Basic tracing and metrics exist  
-**Gaps**: Limited span attributes, missing metrics (percentiles, queue depth), no alerting rules  
+**Current State**: Infrastructure exists (OTel, Jaeger, Prometheus, Grafana) but largely unused
+
+**Critical Gaps**:
+
+1. **Metrics not recorded**: Defined but never called
+   - ❌ `RecordCacheHit/Miss` - Not called in cache implementations
+   - ❌ `RecordLinksChecked` - Not called in link checker
+   - ❌ `RecordAnalysisDuration` - Not called in analyzer
+   - ✅ `RecordHTTPRequest` - Only HTTP metrics work
+2. **Metrics not injected**: Created in main but not passed to cache/analyzer/link checker
+3. **No error tracking**: No metrics for 4xx/5xx, timeouts, parse failures, cache errors
+4. **Dashboard incomplete**: Missing error panels, cache breakdown (L1/L2), link check metrics, queue depth, percentiles (p99)
+5. **Tracing too shallow**: Missing spans for collectors, individual link checks, Redis ops, HTTP fetches
+6. **No alerting**: No Prometheus alert rules for high errors, slow requests, low cache hit rate, queue backlog
+7. **Queue gauge not implemented**: `queueSize` defined but callback never registered
+8. **No histogram buckets**: Using defaults, not optimized for actual latencies (10ms-30s)
+
+**Quick fixes** (< 1 day):
+- Add metric recording calls in cache, analyzer, link checker
+- Pass metrics object to components
+- Add error counter metric
+- Configure histogram buckets
+- Implement queue gauge callback
+
+**Impact**: Can only see HTTP traffic, blind to core operations. Can't debug production issues.  
 
 ### 4.2 HTML Parser Limitations
 
