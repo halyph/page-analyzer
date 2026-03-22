@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewLinkCheckWorkerPool(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	assert.NotNil(t, pool)
@@ -23,7 +23,7 @@ func TestNewLinkCheckWorkerPool(t *testing.T) {
 }
 
 func TestNewLinkCheckWorkerPool_DefaultValues(t *testing.T) {
-	config := LinkCheckConfig{}
+	config := WorkerPoolConfig{}
 	pool := NewLinkCheckWorkerPool(config)
 
 	assert.Equal(t, 20, pool.workers)
@@ -32,7 +32,7 @@ func TestNewLinkCheckWorkerPool_DefaultValues(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_Submit(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	urls := []string{"https://example.com", "https://example.org"}
@@ -48,7 +48,7 @@ func TestLinkCheckWorkerPool_Submit(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_GetJob_NotFound(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	job, ok := pool.GetJob("nonexistent")
@@ -63,7 +63,7 @@ func TestLinkCheckWorkerPool_ProcessJob_AllAccessible(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	config.Timeout = 2 * time.Second
 	pool := NewLinkCheckWorkerPool(config)
 	pool.Start()
@@ -96,7 +96,7 @@ func TestLinkCheckWorkerPool_ProcessJob_SomeInaccessible(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	config.Timeout = 2 * time.Second
 	pool := NewLinkCheckWorkerPool(config)
 	pool.Start()
@@ -136,7 +136,7 @@ func TestLinkCheckWorkerPool_ProcessJob_Redirects(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	config.Timeout = 2 * time.Second
 	pool := NewLinkCheckWorkerPool(config)
 	pool.Start()
@@ -154,7 +154,7 @@ func TestLinkCheckWorkerPool_ProcessJob_Redirects(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_FullQueue(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	config.QueueSize = 1
 	pool := NewLinkCheckWorkerPool(config)
 	// Don't start workers - queue will fill up
@@ -174,7 +174,7 @@ func TestLinkCheckWorkerPool_FullQueue(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_WaitForJob_Timeout(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 	// Don't start workers - job won't complete
 
@@ -186,7 +186,7 @@ func TestLinkCheckWorkerPool_WaitForJob_Timeout(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_WaitForJob_NotFound(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	_, err := pool.WaitForJob("nonexistent", 1*time.Second)
@@ -201,7 +201,7 @@ func TestCheckLink_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	err := pool.checkLink(pool.ctx, server.URL, "")
@@ -214,7 +214,7 @@ func TestCheckLink_404(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	err := pool.checkLink(pool.ctx, server.URL, "")
@@ -224,7 +224,7 @@ func TestCheckLink_404(t *testing.T) {
 }
 
 func TestCheckLink_InvalidURL(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	err := pool.checkLink(pool.ctx, "ht!tp://invalid url", "")
@@ -238,7 +238,7 @@ func TestCheckLink_AcceptsRedirects(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 
 	// 3xx status codes should be considered accessible
@@ -332,8 +332,8 @@ func TestGenerateJobID(t *testing.T) {
 	assert.NotEqual(t, id1, id2)
 }
 
-func TestDefaultLinkCheckConfig(t *testing.T) {
-	config := testLinkCheckConfig()
+func TestDefaultWorkerPoolConfig(t *testing.T) {
+	config := testWorkerPoolConfig()
 
 	assert.Equal(t, 20, config.Workers)
 	assert.Equal(t, 100, config.QueueSize)
@@ -342,7 +342,7 @@ func TestDefaultLinkCheckConfig(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_Stop(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	pool := NewLinkCheckWorkerPool(config)
 	pool.Start()
 
@@ -351,7 +351,7 @@ func TestLinkCheckWorkerPool_Stop(t *testing.T) {
 }
 
 func TestLinkCheckWorkerPool_GarbageCollection(t *testing.T) {
-	config := testLinkCheckConfig()
+	config := testWorkerPoolConfig()
 	config.JobMaxAge = 100 * time.Millisecond
 	pool := NewLinkCheckWorkerPool(config)
 

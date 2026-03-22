@@ -30,7 +30,7 @@ type LinkCheckWorkerPool struct {
 }
 
 // NewLinkCheckWorkerPool creates a new worker pool for link checking
-func NewLinkCheckWorkerPool(cfg LinkCheckConfig) *LinkCheckWorkerPool {
+func NewLinkCheckWorkerPool(cfg WorkerPoolConfig) *LinkCheckWorkerPool {
 	if cfg.Workers <= 0 {
 		cfg.Workers = 20
 	}

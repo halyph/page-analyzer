@@ -25,8 +25,8 @@ type LinkChecker interface {
 	Stop()
 }
 
-// LinkCheckConfig configures the link checker worker pool
-type LinkCheckConfig struct {
+// WorkerPoolConfig configures the link checker worker pool
+type WorkerPoolConfig struct {
 	Workers      int           // Number of concurrent workers
 	QueueSize    int           // Job queue buffer size
 	Timeout      time.Duration // HTTP request timeout

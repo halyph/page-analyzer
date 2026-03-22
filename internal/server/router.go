@@ -34,10 +34,8 @@ func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, metrics *obse
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
-		// Health checks
+		// Health check
 		r.Get("/health", restHandler.HandleHealth)
-		r.Get("/health/live", restHandler.HandleHealthLive)
-		r.Get("/health/ready", restHandler.HandleHealthReady)
 
 		// Analysis
 		r.Post("/analyze", restHandler.HandleAnalyze)

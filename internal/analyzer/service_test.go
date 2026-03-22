@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestService_AnalyzeSuccess(t *testing.T) {
@@ -27,48 +29,17 @@ func TestService_AnalyzeSuccess(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// Verify HTML version
-	if result.HTMLVersion != "HTML5" {
-		t.Errorf("HTMLVersion = %s, want HTML5", result.HTMLVersion)
-	}
-
-	// Verify title
-	if result.Title != "Example Domain" {
-		t.Errorf("Title = %s, want 'Example Domain'", result.Title)
-	}
-
-	// Verify headings
-	if result.Headings.H1 != 1 {
-		t.Errorf("H1 = %d, want 1", result.Headings.H1)
-	}
-	if result.Headings.H2 != 1 {
-		t.Errorf("H2 = %d, want 1", result.Headings.H2)
-	}
-
-	// Verify links
-	if result.Links.InternalCount() != 1 {
-		t.Errorf("Internal links = %d, want 1", result.Links.InternalCount())
-	}
-	if result.Links.ExternalCount() != 1 {
-		t.Errorf("External links = %d, want 1", result.Links.ExternalCount())
-	}
-
-	// Verify login form
-	if result.HasLoginForm {
-		t.Error("HasLoginForm = true, want false")
-	}
-
-	// Verify metadata
-	if result.Version != "v1" {
-		t.Errorf("Version = %s, want v1", result.Version)
-	}
-	if result.AnalyzedAt.IsZero() {
-		t.Error("AnalyzedAt should be set")
-	}
+	assert.Equal(t, "HTML5", result.HTMLVersion)
+	assert.Equal(t, "Example Domain", result.Title)
+	assert.Equal(t, 1, result.Headings.H1)
+	assert.Equal(t, 1, result.Headings.H2)
+	assert.Equal(t, 1, result.Links.InternalCount())
+	assert.Equal(t, 1, result.Links.ExternalCount())
+	assert.False(t, result.HasLoginForm)
+	assert.Equal(t, "v1", result.Version)
+	assert.False(t, result.AnalyzedAt.IsZero())
 }
 
 func TestService_AnalyzeWithLoginForm(t *testing.T) {
@@ -86,13 +57,9 @@ func TestService_AnalyzeWithLoginForm(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HasLoginForm {
-		t.Error("HasLoginForm = false, want true")
-	}
+	assert.True(t, result.HasLoginForm)
 }
 
 func TestService_AnalyzeComplexPage(t *testing.T) {
@@ -110,38 +77,16 @@ func TestService_AnalyzeComplexPage(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// Verify HTML version
-	if result.HTMLVersion != "XHTML 1.0 Transitional" {
-		t.Errorf("HTMLVersion = %s, want XHTML 1.0 Transitional", result.HTMLVersion)
-	}
+	assert.Equal(t, "XHTML 1.0 Transitional", result.HTMLVersion)
 
-	// Verify all heading levels
 	expected := domain.HeadingCounts{H1: 1, H2: 2, H3: 3, H4: 1, H5: 1, H6: 1}
-	if result.Headings != expected {
-		t.Errorf("Headings = %+v, want %+v", result.Headings, expected)
-	}
-
-	// Verify total headings
-	if result.Headings.Total() != 9 {
-		t.Errorf("Total headings = %d, want 9", result.Headings.Total())
-	}
-
-	// Verify links
-	if result.Links.InternalCount() != 3 {
-		t.Errorf("Internal links = %d, want 3", result.Links.InternalCount())
-	}
-	if result.Links.ExternalCount() != 2 {
-		t.Errorf("External links = %d, want 2", result.Links.ExternalCount())
-	}
-
-	// Verify login form
-	if !result.HasLoginForm {
-		t.Error("HasLoginForm = false, want true")
-	}
+	assert.Equal(t, expected, result.Headings)
+	assert.Equal(t, 9, result.Headings.Total())
+	assert.Equal(t, 3, result.Links.InternalCount())
+	assert.Equal(t, 2, result.Links.ExternalCount())
+	assert.True(t, result.HasLoginForm)
 }
 
 func TestService_AnalyzeRedirect(t *testing.T) {
@@ -167,18 +112,10 @@ func TestService_AnalyzeRedirect(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// URL should be updated to final destination
-	if result.URL != server.URL+"/final" {
-		t.Errorf("URL = %s, want %s", result.URL, server.URL+"/final")
-	}
-
-	if result.Title != "Final Page" {
-		t.Errorf("Title = %s, want 'Final Page'", result.Title)
-	}
+	assert.Equal(t, server.URL+"/final", result.URL)
+	assert.Equal(t, "Final Page", result.Title)
 }
 
 func TestService_Analyze404(t *testing.T) {
@@ -194,18 +131,11 @@ func TestService_Analyze404(t *testing.T) {
 	}
 
 	_, err := service.Analyze(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected error for 404")
-	}
-
-	if !domain.IsAnalysisError(err) {
-		t.Errorf("expected AnalysisError, got %T", err)
-	}
+	require.Error(t, err)
+	assert.True(t, domain.IsAnalysisError(err))
 
 	statusCode := domain.GetStatusCode(err)
-	if statusCode != http.StatusBadGateway {
-		t.Errorf("StatusCode = %d, want %d", statusCode, http.StatusBadGateway)
-	}
+	assert.Equal(t, http.StatusBadGateway, statusCode)
 }
 
 func TestService_AnalyzeInvalidURL(t *testing.T) {
@@ -216,13 +146,8 @@ func TestService_AnalyzeInvalidURL(t *testing.T) {
 	}
 
 	_, err := service.Analyze(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected error for invalid URL")
-	}
-
-	if !domain.IsAnalysisError(err) {
-		t.Errorf("expected AnalysisError, got %T", err)
-	}
+	require.Error(t, err)
+	assert.True(t, domain.IsAnalysisError(err))
 }
 
 func TestService_AnalyzeEmptyURL(t *testing.T) {
@@ -233,9 +158,7 @@ func TestService_AnalyzeEmptyURL(t *testing.T) {
 	}
 
 	_, err := service.Analyze(context.Background(), req)
-	if err != domain.ErrEmptyURL {
-		t.Errorf("expected ErrEmptyURL, got %v", err)
-	}
+	assert.ErrorIs(t, err, domain.ErrEmptyURL)
 }
 
 func TestService_AnalyzeMalformedHTML(t *testing.T) {
@@ -253,19 +176,10 @@ func TestService_AnalyzeMalformedHTML(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v (parser should be forgiving)", err)
-	}
+	require.NoError(t, err, "parser should be forgiving")
 
-	// HTML parser should extract title even from malformed HTML
-	if result.Title != "Broken" {
-		t.Errorf("Title = %q, want 'Broken'", result.Title)
-	}
-
-	// Should still count H1
-	if result.Headings.H1 != 1 {
-		t.Errorf("H1 = %d, want 1", result.Headings.H1)
-	}
+	assert.Equal(t, "Broken", result.Title)
+	assert.Equal(t, 1, result.Headings.H1)
 }
 
 func TestService_AnalyzeEmptyPage(t *testing.T) {
@@ -283,9 +197,7 @@ func TestService_AnalyzeEmptyPage(t *testing.T) {
 	}
 
 	_, err := service.Analyze(context.Background(), req)
-	if err == nil {
-		t.Error("expected error for empty HTML")
-	}
+	require.Error(t, err)
 }
 
 func TestService_AnalyzeWithMaxLinks(t *testing.T) {
@@ -310,37 +222,19 @@ func TestService_AnalyzeWithMaxLinks(t *testing.T) {
 	}
 
 	result, err := service.Analyze(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Analyze() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	totalCollected := result.Links.InternalCount() + result.Links.ExternalCount()
-	if totalCollected != 10 {
-		t.Errorf("Total collected links = %d, want 10", totalCollected)
-	}
-
-	if !result.Links.Truncated {
-		t.Error("Expected Truncated to be true")
-	}
-
-	// TotalFound should be higher (all unique links discovered)
-	if result.Links.TotalFound != 50 {
-		t.Errorf("TotalFound = %d, expected 50", result.Links.TotalFound)
-	}
+	assert.Equal(t, 10, totalCollected)
+	assert.True(t, result.Links.Truncated)
+	assert.Equal(t, 50, result.Links.TotalFound)
 }
 
 func TestDefaultServiceConfig(t *testing.T) {
 	config := testServiceConfig()
 
-	// Should include default fetcher config
-	if config.Fetcher.Timeout == 0 {
-		t.Error("Fetcher timeout should be set")
-	}
-
-	// Should include default walker config
-	if config.Walker.MaxTokens == 0 {
-		t.Error("Walker MaxTokens should be set")
-	}
+	assert.NotZero(t, config.Fetcher.Timeout)
+	assert.NotZero(t, config.Walker.MaxTokens)
 }
 
 func TestService_ContextCancellation(t *testing.T) {
@@ -361,7 +255,5 @@ func TestService_ContextCancellation(t *testing.T) {
 	}
 
 	_, err := service.Analyze(ctx, req)
-	if err == nil {
-		t.Error("expected error for canceled context")
-	}
+	require.Error(t, err)
 }

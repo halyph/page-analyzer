@@ -7,6 +7,8 @@ import (
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
 	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWalker_Simple(t *testing.T) {
@@ -23,22 +25,11 @@ func TestWalker_Simple(t *testing.T) {
 	}
 
 	err := walker.Walk(html, colls, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// Verify results
-	if result.HTMLVersion != "HTML5" {
-		t.Errorf("HTMLVersion = %s, want HTML5", result.HTMLVersion)
-	}
-
-	if result.Title != "Test Page" {
-		t.Errorf("Title = %s, want 'Test Page'", result.Title)
-	}
-
-	if result.Headings.H1 != 1 {
-		t.Errorf("H1 count = %d, want 1", result.Headings.H1)
-	}
+	assert.Equal(t, "HTML5", result.HTMLVersion)
+	assert.Equal(t, "Test Page", result.Title)
+	assert.Equal(t, 1, result.Headings.H1)
 }
 
 func TestWalker_CompleteAnalysis(t *testing.T) {
@@ -58,34 +49,16 @@ func TestWalker_CompleteAnalysis(t *testing.T) {
 	}
 
 	err := walker.Walk(html, colls, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	// Verify all results
-	if result.HTMLVersion != "HTML5" {
-		t.Errorf("HTMLVersion = %s, want HTML5", result.HTMLVersion)
-	}
-
-	if result.Title != "Complete Test" {
-		t.Errorf("Title = %s, want 'Complete Test'", result.Title)
-	}
-
-	if result.Headings.H1 != 1 || result.Headings.H2 != 2 || result.Headings.H3 != 1 {
-		t.Errorf("Headings = %+v, want H1:1 H2:2 H3:1", result.Headings)
-	}
-
-	if len(result.Links.Internal) != 1 {
-		t.Errorf("Internal links = %d, want 1", len(result.Links.Internal))
-	}
-
-	if len(result.Links.External) != 1 {
-		t.Errorf("External links = %d, want 1", len(result.Links.External))
-	}
-
-	if !result.HasLoginForm {
-		t.Error("HasLoginForm = false, want true")
-	}
+	assert.Equal(t, "HTML5", result.HTMLVersion)
+	assert.Equal(t, "Complete Test", result.Title)
+	assert.Equal(t, 1, result.Headings.H1)
+	assert.Equal(t, 2, result.Headings.H2)
+	assert.Equal(t, 1, result.Headings.H3)
+	assert.Len(t, result.Links.Internal, 1)
+	assert.Len(t, result.Links.External, 1)
+	assert.True(t, result.HasLoginForm)
 }
 
 func TestWalker_EmptyBody(t *testing.T) {
@@ -93,9 +66,7 @@ func TestWalker_EmptyBody(t *testing.T) {
 	result := domain.NewAnalysisResult("https://example.com")
 
 	err := walker.Walk([]byte{}, []domain.Collector{}, result)
-	if err == nil {
-		t.Error("expected error for empty body")
-	}
+	require.Error(t, err)
 }
 
 func TestWalker_MalformedHTML(t *testing.T) {
@@ -111,19 +82,10 @@ func TestWalker_MalformedHTML(t *testing.T) {
 	}
 
 	err := walker.Walk(html, colls, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v (parser should be forgiving)", err)
-	}
+	require.NoError(t, err, "parser should be forgiving")
 
-	// Parser should have extracted title
-	if result.Title != "Test" {
-		t.Errorf("Title = %q, want 'Test'", result.Title)
-	}
-
-	// Should still count H1 even though unclosed
-	if result.Headings.H1 != 1 {
-		t.Errorf("H1 = %d, want 1", result.Headings.H1)
-	}
+	assert.Equal(t, "Test", result.Title)
+	assert.Equal(t, 1, result.Headings.H1)
 }
 
 func TestWalker_LargeDocument(t *testing.T) {
@@ -146,13 +108,9 @@ func TestWalker_LargeDocument(t *testing.T) {
 	}
 
 	err := walker.Walk([]byte(sb.String()), colls, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if result.Headings.H2 != 1000 {
-		t.Errorf("H2 count = %d, want 1000", result.Headings.H2)
-	}
+	assert.Equal(t, 1000, result.Headings.H2)
 }
 
 func TestWalker_MaxTokensExceeded(t *testing.T) {
@@ -169,13 +127,8 @@ func TestWalker_MaxTokensExceeded(t *testing.T) {
 	result := domain.NewAnalysisResult("https://example.com")
 
 	err := walker.Walk([]byte(sb.String()), []domain.Collector{}, result)
-	if err == nil {
-		t.Error("expected error for exceeding max tokens")
-	}
-
-	if !strings.Contains(err.Error(), "exceeded max tokens") {
-		t.Errorf("error = %v, want 'exceeded max tokens'", err)
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeded max tokens")
 }
 
 func TestWalker_NoCollectors(t *testing.T) {
@@ -186,14 +139,10 @@ func TestWalker_NoCollectors(t *testing.T) {
 
 	// Walk with no collectors should complete without error
 	err := walker.Walk([]byte(html), []domain.Collector{}, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	// Result should have default values
-	if result.Title != "" {
-		t.Errorf("Title = %s, want empty (no title collector)", result.Title)
-	}
+	assert.Empty(t, result.Title, "no title collector")
 }
 
 func TestWalker_SingleCollector(t *testing.T) {
@@ -207,37 +156,27 @@ func TestWalker_SingleCollector(t *testing.T) {
 	}
 
 	err := walker.Walk([]byte(html), colls, result)
-	if err != nil {
-		t.Fatalf("Walk() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if result.Title != "Single" {
-		t.Errorf("Title = %s, want 'Single'", result.Title)
-	}
+	assert.Equal(t, "Single", result.Title)
 }
 
 func TestDefaultWalkerConfig(t *testing.T) {
 	config := testProcessingConfig()
 
-	if config.MaxTokens != 1_000_000 {
-		t.Errorf("MaxTokens = %d, want 1000000", config.MaxTokens)
-	}
+	assert.Equal(t, 1_000_000, config.MaxTokens)
 }
 
 func TestNewWalker_ZeroMaxTokens(t *testing.T) {
 	processingCfg := config.ProcessingConfig{MaxTokens: 0}
 	walker := NewWalker(processingCfg)
 
-	if walker.maxTokens != 1_000_000 {
-		t.Errorf("maxTokens = %d, want 1000000 (default)", walker.maxTokens)
-	}
+	assert.Equal(t, 1_000_000, walker.maxTokens, "should use default")
 }
 
 func TestNewWalker_NegativeMaxTokens(t *testing.T) {
 	cfg := config.ProcessingConfig{MaxTokens: -100}
 	walker := NewWalker(cfg)
 
-	if walker.maxTokens != 1_000_000 {
-		t.Errorf("maxTokens = %d, want 1000000 (default)", walker.maxTokens)
-	}
+	assert.Equal(t, 1_000_000, walker.maxTokens, "should use default")
 }

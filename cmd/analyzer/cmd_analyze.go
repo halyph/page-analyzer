@@ -97,7 +97,7 @@ func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service 
 	}
 
 	if c.Bool("check-links") {
-		linkCheckCfg := analyzer.LinkCheckConfig{
+		workerPoolCfg := analyzer.WorkerPoolConfig{
 			Timeout:      cfg.LinkChecking.CheckTimeout,
 			Workers:      cfg.LinkChecking.Workers,
 			QueueSize:    cfg.LinkChecking.QueueSize,
@@ -106,7 +106,7 @@ func createAnalyzerService(cfg config.Config, c *cli.Context) *analyzer.Service 
 			Cache:        memCache,
 			LinkCacheTTL: cfg.Caching.LinkCacheTTL,
 		}
-		serviceCfg.LinkChecker = &linkCheckCfg
+		serviceCfg.WorkerPoolConfig = &workerPoolCfg
 	}
 
 	return analyzer.NewService(serviceCfg)

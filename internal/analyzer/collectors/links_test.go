@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -164,9 +166,7 @@ func TestLinksCollector(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			collector, err := NewLinksCollector(tt.baseURL, 10000)
-			if err != nil {
-				t.Fatalf("NewLinksCollector() error = %v", err)
-			}
+			require.NoError(t, err)
 
 			result := domain.NewAnalysisResult(tt.baseURL)
 
@@ -184,35 +184,23 @@ func TestLinksCollector(t *testing.T) {
 			collector.Apply(result)
 
 			// Check internal links
-			if len(result.Links.Internal) != len(tt.wantInternal) {
-				t.Errorf("Internal links count = %d, want %d", len(result.Links.Internal), len(tt.wantInternal))
-			}
+			assert.Equal(t, len(tt.wantInternal), len(result.Links.Internal), "internal links count")
 			for i, want := range tt.wantInternal {
-				if i >= len(result.Links.Internal) {
-					break
-				}
-				if result.Links.Internal[i] != want {
-					t.Errorf("Internal[%d] = %q, want %q", i, result.Links.Internal[i], want)
+				if i < len(result.Links.Internal) {
+					assert.Equal(t, want, result.Links.Internal[i], "internal[%d]", i)
 				}
 			}
 
 			// Check external links
-			if len(result.Links.External) != len(tt.wantExternal) {
-				t.Errorf("External links count = %d, want %d", len(result.Links.External), len(tt.wantExternal))
-			}
+			assert.Equal(t, len(tt.wantExternal), len(result.Links.External), "external links count")
 			for i, want := range tt.wantExternal {
-				if i >= len(result.Links.External) {
-					break
-				}
-				if result.Links.External[i] != want {
-					t.Errorf("External[%d] = %q, want %q", i, result.Links.External[i], want)
+				if i < len(result.Links.External) {
+					assert.Equal(t, want, result.Links.External[i], "external[%d]", i)
 				}
 			}
 
 			// Check truncation
-			if result.Links.Truncated != tt.wantTruncated {
-				t.Errorf("Truncated = %v, want %v", result.Links.Truncated, tt.wantTruncated)
-			}
+			assert.Equal(t, tt.wantTruncated, result.Links.Truncated)
 		})
 	}
 }
@@ -232,9 +220,7 @@ func TestLinksCollector_MaxLinksLimit(t *testing.T) {
 	sb.WriteString("</body></html>")
 
 	collector, err := NewLinksCollector(baseURL, maxLinks)
-	if err != nil {
-		t.Fatalf("NewLinksCollector() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	result := domain.NewAnalysisResult(baseURL)
 
@@ -250,17 +236,9 @@ func TestLinksCollector_MaxLinksLimit(t *testing.T) {
 	collector.Apply(result)
 
 	totalCollected := len(result.Links.Internal) + len(result.Links.External)
-	if totalCollected != maxLinks {
-		t.Errorf("Total collected = %d, want %d", totalCollected, maxLinks)
-	}
-
-	if !result.Links.Truncated {
-		t.Error("Expected Truncated to be true")
-	}
-
-	if result.Links.TotalFound != 10 {
-		t.Errorf("TotalFound = %d, want 10", result.Links.TotalFound)
-	}
+	assert.Equal(t, maxLinks, totalCollected)
+	assert.True(t, result.Links.Truncated)
+	assert.Equal(t, 10, result.Links.TotalFound)
 }
 
 func TestIsSameOrigin(t *testing.T) {
@@ -313,9 +291,7 @@ func TestIsSameOrigin(t *testing.T) {
 			base, _ := url.Parse(tt.base)
 			target, _ := url.Parse(tt.target)
 			got := isSameOrigin(base, target)
-			if got != tt.want {
-				t.Errorf("isSameOrigin(%q, %q) = %v, want %v", tt.base, tt.target, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -341,9 +317,7 @@ func TestIsNonHTTPScheme(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.href, func(t *testing.T) {
 			got := isNonHTTPScheme(tt.href)
-			if got != tt.want {
-				t.Errorf("isNonHTTPScheme(%q) = %v, want %v", tt.href, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -388,9 +362,7 @@ func TestExtractAttr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := extractAttr(tt.attrs, tt.key)
-			if got != tt.want {
-				t.Errorf("extractAttr() = %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -400,12 +372,8 @@ func TestLinksFactory(t *testing.T) {
 
 	// Test Metadata
 	metadata := factory.Metadata()
-	if metadata.Name != "links" {
-		t.Errorf("Name = %q, want links", metadata.Name)
-	}
-	if !metadata.Required {
-		t.Error("Expected Required to be true")
-	}
+	assert.Equal(t, "links", metadata.Name)
+	assert.True(t, metadata.Required)
 
 	// Test Create
 	config := domain.CollectorConfig{
@@ -413,40 +381,25 @@ func TestLinksFactory(t *testing.T) {
 		MaxItems: 1000,
 	}
 	collector, err := factory.Create(config)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("Create() returned nil collector")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	// Verify it's the right type
 	linksCollector, ok := collector.(*LinksCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *LinksCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *LinksCollector", collector)
 
 	// Verify max links was set
-	if linksCollector.maxLinks != 1000 {
-		t.Errorf("maxLinks = %d, want 1000", linksCollector.maxLinks)
-	}
+	assert.Equal(t, 1000, linksCollector.maxLinks)
 }
 
 func TestNewLinksCollector_InvalidBaseURL(t *testing.T) {
 	_, err := NewLinksCollector("://invalid", 1000)
-	if err == nil {
-		t.Error("Expected error for invalid base URL")
-	}
+	require.Error(t, err)
 }
 
 func TestNewLinksCollector_DefaultMaxLinks(t *testing.T) {
 	collector, err := NewLinksCollector("https://example.com", 0)
-	if err != nil {
-		t.Fatalf("NewLinksCollector() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if collector.maxLinks != 10000 {
-		t.Errorf("maxLinks = %d, want 10000 (default)", collector.maxLinks)
-	}
+	assert.Equal(t, 10000, collector.maxLinks, "should use default")
 }

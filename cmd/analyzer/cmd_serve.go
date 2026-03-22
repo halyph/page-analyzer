@@ -102,11 +102,8 @@ func runServe(c *cli.Context) error {
 	analyzerService := createService(cfg, cacheImpl, linkChecker, logger)
 	defer analyzerService.Stop()
 
-	// Create health checker
-	healthChecker := observability.NewHealthChecker(cacheImpl)
-
 	// Create HTTP handlers
-	restHandler := rest.NewHandler(analyzerService, linkChecker, healthChecker, logger, Version, GitHead)
+	restHandler := rest.NewHandler(analyzerService, linkChecker, logger, Version, GitHead)
 	webHandler, err := web.NewHandler(analyzerService, logger, Version, GitHead)
 	if err != nil {
 		return fmt.Errorf("failed to create web handler: %w", err)
@@ -183,7 +180,7 @@ func createCache(cfg config.Config, logger *slog.Logger) cache.Cache {
 }
 
 func createLinkChecker(cfg config.Config, cacheImpl cache.Cache, logger *slog.Logger) *analyzer.LinkCheckWorkerPool {
-	linkCheckCfg := analyzer.LinkCheckConfig{
+	workerPoolCfg := analyzer.WorkerPoolConfig{
 		Timeout:      cfg.LinkChecking.CheckTimeout,
 		Workers:      cfg.LinkChecking.Workers,
 		QueueSize:    cfg.LinkChecking.QueueSize,
@@ -192,7 +189,7 @@ func createLinkChecker(cfg config.Config, cacheImpl cache.Cache, logger *slog.Lo
 		Cache:        cacheImpl,
 		LinkCacheTTL: cfg.Caching.LinkCacheTTL,
 	}
-	linkChecker := analyzer.NewLinkCheckWorkerPool(linkCheckCfg)
+	linkChecker := analyzer.NewLinkCheckWorkerPool(workerPoolCfg)
 
 	if cfg.LinkChecking.CheckMode != config.LinkCheckModeDisabled {
 		linkChecker.Start()
@@ -206,12 +203,12 @@ func createLinkChecker(cfg config.Config, cacheImpl cache.Cache, logger *slog.Lo
 
 func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyzer.LinkCheckWorkerPool, logger *slog.Logger) *analyzer.Service {
 	serviceCfg := analyzer.ServiceConfig{
-		Fetcher:         cfg.Fetching,
-		Walker:          cfg.Processing,
-		LinkCheckerPool: linkChecker,
-		Cache:           cacheImpl,
-		PageCacheTTL:    cfg.Caching.PageCacheTTL,
-		Logger:          logger,
+		Fetcher:      cfg.Fetching,
+		Walker:       cfg.Processing,
+		LinkChecker:  linkChecker,
+		Cache:        cacheImpl,
+		PageCacheTTL: cfg.Caching.PageCacheTTL,
+		Logger:       logger,
 	}
 
 	return analyzer.NewService(serviceCfg)

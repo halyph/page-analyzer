@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFetcher_FetchSuccess(t *testing.T) {
@@ -25,43 +27,25 @@ func TestFetcher_FetchSuccess(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err != nil {
-		t.Fatalf("Fetch() error = %v", err)
-	}
-
-	if result.StatusCode != http.StatusOK {
-		t.Errorf("StatusCode = %d, want %d", result.StatusCode, http.StatusOK)
-	}
-
-	if result.ContentType != "text/html" {
-		t.Errorf("ContentType = %s, want text/html", result.ContentType)
-	}
-
-	if !strings.Contains(string(result.Body), "Test") {
-		t.Errorf("Body does not contain expected content")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, result.StatusCode)
+	assert.Equal(t, "text/html", result.ContentType)
+	assert.Contains(t, string(result.Body), "Test")
 }
 
 func TestFetcher_EmptyURL(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), "")
 
-	if err != domain.ErrEmptyURL {
-		t.Errorf("expected ErrEmptyURL, got %v", err)
-	}
+	assert.ErrorIs(t, err, domain.ErrEmptyURL)
 }
 
 func TestFetcher_InvalidURL(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), "://invalid")
 
-	if err == nil {
-		t.Error("expected error for invalid URL")
-	}
-
-	if !domain.IsAnalysisError(err) {
-		t.Errorf("expected AnalysisError, got %T", err)
-	}
+	require.Error(t, err)
+	assert.True(t, domain.IsAnalysisError(err))
 }
 
 func TestFetcher_404NotFound(t *testing.T) {
@@ -73,18 +57,11 @@ func TestFetcher_404NotFound(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err == nil {
-		t.Fatal("expected error for 404")
-	}
-
-	if !domain.IsAnalysisError(err) {
-		t.Errorf("expected AnalysisError, got %T", err)
-	}
+	require.Error(t, err)
+	assert.True(t, domain.IsAnalysisError(err))
 
 	statusCode := domain.GetStatusCode(err)
-	if statusCode != http.StatusBadGateway {
-		t.Errorf("StatusCode = %d, want %d", statusCode, http.StatusBadGateway)
-	}
+	assert.Equal(t, http.StatusBadGateway, statusCode)
 }
 
 func TestFetcher_500ServerError(t *testing.T) {
@@ -96,9 +73,7 @@ func TestFetcher_500ServerError(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err == nil {
-		t.Fatal("expected error for 500")
-	}
+	require.Error(t, err)
 }
 
 func TestFetcher_Redirect(t *testing.T) {
@@ -120,18 +95,9 @@ func TestFetcher_Redirect(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL+"/start")
 
-	if err != nil {
-		t.Fatalf("Fetch() error = %v", err)
-	}
-
-	// Should have followed redirects
-	if !strings.Contains(result.URL, "/final") {
-		t.Errorf("URL = %s, expected to contain /final", result.URL)
-	}
-
-	if string(result.Body) != "Final destination" {
-		t.Errorf("Body = %s, want 'Final destination'", string(result.Body))
-	}
+	require.NoError(t, err)
+	assert.Contains(t, result.URL, "/final")
+	assert.Equal(t, "Final destination", string(result.Body))
 }
 
 func TestFetcher_TooManyRedirects(t *testing.T) {
@@ -144,9 +110,7 @@ func TestFetcher_TooManyRedirects(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	_, err := fetcher.Fetch(context.Background(), server.URL+"/redirect")
 
-	if err == nil {
-		t.Fatal("expected error for too many redirects")
-	}
+	require.Error(t, err)
 }
 
 func TestFetcher_Timeout(t *testing.T) {
@@ -164,9 +128,7 @@ func TestFetcher_Timeout(t *testing.T) {
 
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err == nil {
-		t.Fatal("expected timeout error")
-	}
+	require.Error(t, err)
 }
 
 func TestFetcher_ContextCancellation(t *testing.T) {
@@ -184,9 +146,7 @@ func TestFetcher_ContextCancellation(t *testing.T) {
 
 	_, err := fetcher.Fetch(ctx, server.URL)
 
-	if err == nil {
-		t.Fatal("expected error for canceled context")
-	}
+	require.Error(t, err)
 }
 
 func TestFetcher_BodySizeLimit(t *testing.T) {
@@ -205,13 +165,8 @@ func TestFetcher_BodySizeLimit(t *testing.T) {
 
 	_, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err == nil {
-		t.Fatal("expected error for body too large")
-	}
-
-	if !domain.IsAnalysisError(err) {
-		t.Errorf("expected AnalysisError, got %T", err)
-	}
+	require.Error(t, err)
+	assert.True(t, domain.IsAnalysisError(err))
 }
 
 func TestFetcher_UserAgent(t *testing.T) {
@@ -226,13 +181,9 @@ func TestFetcher_UserAgent(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 
 	_, err := fetcher.Fetch(context.Background(), server.URL)
-	if err != nil {
-		t.Fatalf("Fetch() error = %v", err)
-	}
+	require.NoError(t, err)
 
-	if receivedUA != "PageAnalyzer/1.0" {
-		t.Errorf("User-Agent = %s, want PageAnalyzer/1.0", receivedUA)
-	}
+	assert.Equal(t, "PageAnalyzer/1.0", receivedUA)
 }
 
 func TestFetcher_Headers(t *testing.T) {
@@ -246,18 +197,7 @@ func TestFetcher_Headers(t *testing.T) {
 	fetcher := NewFetcher(testFetchingConfig())
 	result, err := fetcher.Fetch(context.Background(), server.URL)
 
-	if err != nil {
-		t.Fatalf("Fetch() error = %v", err)
-	}
-
-	if result.Headers["X-Custom-Header"] != "test-value" {
-		t.Errorf("X-Custom-Header = %s, want test-value", result.Headers["X-Custom-Header"])
-	}
-
-	if result.Headers["Cache-Control"] != "no-cache" {
-		t.Errorf("Cache-Control = %s, want no-cache", result.Headers["Cache-Control"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "test-value", result.Headers["X-Custom-Header"])
+	assert.Equal(t, "no-cache", result.Headers["Cache-Control"])
 }
-
-// Test removed: TestDefaultFetcherConfig
-// Config defaults are now in internal/config package and tested there

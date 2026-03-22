@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -79,9 +81,7 @@ func TestTitleCollector(t *testing.T) {
 			// Apply result
 			collector.Apply(result)
 
-			if result.Title != tt.wantTitle {
-				t.Errorf("Title = %q, want %q", result.Title, tt.wantTitle)
-			}
+			assert.Equal(t, tt.wantTitle, result.Title)
 		})
 	}
 }
@@ -106,9 +106,7 @@ func TestTitleCollector_StopsAfterFirst(t *testing.T) {
 
 	collector.Apply(result)
 
-	if result.Title != "First" {
-		t.Errorf("Title = %q, want 'First'", result.Title)
-	}
+	assert.Equal(t, "First", result.Title)
 }
 
 func TestTitleCollector_MultipleTextNodes(t *testing.T) {
@@ -131,10 +129,7 @@ func TestTitleCollector_MultipleTextNodes(t *testing.T) {
 
 	collector.Apply(result)
 
-	expected := "Part One Part Two"
-	if result.Title != expected {
-		t.Errorf("Title = %q, want %q", result.Title, expected)
-	}
+	assert.Equal(t, "Part One Part Two", result.Title)
 }
 
 func TestTitleCollector_NestedTags(t *testing.T) {
@@ -157,9 +152,8 @@ func TestTitleCollector_NestedTags(t *testing.T) {
 	collector.Apply(result)
 
 	// Note: The tokenizer will give us "Hello " and "World" as separate text tokens
-	if !strings.Contains(result.Title, "Hello") || !strings.Contains(result.Title, "World") {
-		t.Errorf("Title = %q, should contain 'Hello' and 'World'", result.Title)
-	}
+	assert.Contains(t, result.Title, "Hello")
+	assert.Contains(t, result.Title, "World")
 }
 
 func TestTitleFactory(t *testing.T) {
@@ -167,27 +161,16 @@ func TestTitleFactory(t *testing.T) {
 
 	// Test Metadata
 	metadata := factory.Metadata()
-	if metadata.Name != "title" {
-		t.Errorf("Name = %q, want title", metadata.Name)
-	}
-	if !metadata.Required {
-		t.Error("Expected Required to be true")
-	}
+	assert.Equal(t, "title", metadata.Name)
+	assert.True(t, metadata.Required)
 
 	// Test Create
 	config := domain.CollectorConfig{}
 	collector, err := factory.Create(config)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("Create() returned nil collector")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	// Verify it's the right type
 	_, ok := collector.(*TitleCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *TitleCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *TitleCollector", collector)
 }

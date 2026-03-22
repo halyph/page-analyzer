@@ -6,13 +6,13 @@ import (
 	"github.com/halyph/page-analyzer/internal/analyzer/collectors"
 	"github.com/halyph/page-analyzer/internal/config"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegistry_AllCollectorsRegistered(t *testing.T) {
 	for _, name := range config.DefaultCollectors {
-		if !collectors.DefaultRegistry.Has(name) {
-			t.Errorf("Collector %s not registered", name)
-		}
+		assert.True(t, collectors.DefaultRegistry.Has(name), "Collector %s not registered", name)
 	}
 }
 
@@ -23,16 +23,9 @@ func TestRegistry_CreateLoginForm(t *testing.T) {
 	}
 
 	collector, err := collectors.DefaultRegistry.Create(config.CollectorLoginForm, cfg)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("collector is nil")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	_, ok := collector.(*collectors.LoginFormCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *LoginFormCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *LoginFormCollector", collector)
 }

@@ -16,14 +16,7 @@ func (h *Handler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		Version:   h.version,
 		GitCommit: h.gitCommit,
 		Uptime:    uptime.String(),
-		Checks:    make(map[string]string),
 	}
-
-	// Could add more health checks here:
-	// - Database connectivity
-	// - Redis connectivity
-	// - Disk space
-	// - Memory usage
 
 	h.respondJSON(w, http.StatusOK, resp)
 }

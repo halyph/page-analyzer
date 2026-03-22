@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLinkAnalysis_Counts(t *testing.T) {
@@ -11,33 +13,17 @@ func TestLinkAnalysis_Counts(t *testing.T) {
 		External: []string{"https://other.com"},
 	}
 
-	if got := la.InternalCount(); got != 2 {
-		t.Errorf("InternalCount() = %d, want 2", got)
-	}
-
-	if got := la.ExternalCount(); got != 1 {
-		t.Errorf("ExternalCount() = %d, want 1", got)
-	}
-
-	if got := la.TotalCollected(); got != 3 {
-		t.Errorf("TotalCollected() = %d, want 3", got)
-	}
+	assert.Equal(t, 2, la.InternalCount())
+	assert.Equal(t, 1, la.ExternalCount())
+	assert.Equal(t, 3, la.TotalCollected())
 }
 
 func TestLinkAnalysis_Empty(t *testing.T) {
 	la := LinkAnalysis{}
 
-	if got := la.InternalCount(); got != 0 {
-		t.Errorf("InternalCount() = %d, want 0", got)
-	}
-
-	if got := la.ExternalCount(); got != 0 {
-		t.Errorf("ExternalCount() = %d, want 0", got)
-	}
-
-	if got := la.TotalCollected(); got != 0 {
-		t.Errorf("TotalCollected() = %d, want 0", got)
-	}
+	assert.Equal(t, 0, la.InternalCount())
+	assert.Equal(t, 0, la.ExternalCount())
+	assert.Equal(t, 0, la.TotalCollected())
 }
 
 func TestLinkCheckResult_InaccessibleCount(t *testing.T) {
@@ -50,17 +36,14 @@ func TestLinkCheckResult_InaccessibleCount(t *testing.T) {
 		},
 	}
 
-	if got := result.InaccessibleCount(); got != 2 {
-		t.Errorf("InaccessibleCount() = %d, want 2", got)
-	}
+	assert.Equal(t, 2, result.InaccessibleCount())
 }
 
 func TestLinkCheckResult_SuccessRate(t *testing.T) {
 	tests := []struct {
-		name       string
-		result     LinkCheckResult
-		want       float64
-		wantApprox bool
+		name   string
+		result LinkCheckResult
+		want   float64
 	}{
 		{
 			name: "perfect score",
@@ -92,23 +75,14 @@ func TestLinkCheckResult_SuccessRate(t *testing.T) {
 				Checked:    100,
 				Accessible: 80,
 			},
-			want:       0.8,
-			wantApprox: true,
+			want: 0.8,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.result.SuccessRate()
-			if tt.wantApprox {
-				if got < tt.want-0.01 || got > tt.want+0.01 {
-					t.Errorf("SuccessRate() = %f, want approximately %f", got, tt.want)
-				}
-			} else {
-				if got != tt.want {
-					t.Errorf("SuccessRate() = %f, want %f", got, tt.want)
-				}
-			}
+			assert.InDelta(t, tt.want, got, 0.01)
 		})
 	}
 }
@@ -142,9 +116,7 @@ func TestLinkError_Error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.linkError.Error()
 			for _, want := range tt.wantContains {
-				if !contains(got, want) {
-					t.Errorf("Error() = %q, should contain %q", got, want)
-				}
+				assert.Contains(t, got, want)
 			}
 		})
 	}
@@ -192,17 +164,9 @@ func TestLinkCheckJob_StatusMethods(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			job := &LinkCheckJob{Status: tt.status}
 
-			if got := job.IsComplete(); got != tt.wantComplete {
-				t.Errorf("IsComplete() = %v, want %v", got, tt.wantComplete)
-			}
-
-			if got := job.IsPending(); got != tt.wantPending {
-				t.Errorf("IsPending() = %v, want %v", got, tt.wantPending)
-			}
-
-			if got := job.IsInProgress(); got != tt.wantInProgress {
-				t.Errorf("IsInProgress() = %v, want %v", got, tt.wantInProgress)
-			}
+			assert.Equal(t, tt.wantComplete, job.IsComplete())
+			assert.Equal(t, tt.wantPending, job.IsPending())
+			assert.Equal(t, tt.wantInProgress, job.IsInProgress())
 		})
 	}
 }
@@ -214,9 +178,7 @@ func TestLinkCheckJob_Age(t *testing.T) {
 	}
 
 	age := job.Age()
-	if age < 4*time.Second || age > 6*time.Second {
-		t.Errorf("Age() = %v, expected approximately 5s", age)
-	}
+	assert.InDelta(t, 5*time.Second, age, float64(time.Second))
 }
 
 func TestNewLinkCheckJob(t *testing.T) {
@@ -226,29 +188,12 @@ func TestNewLinkCheckJob(t *testing.T) {
 
 	job := NewLinkCheckJob(id, urls, baseURL)
 
-	if job.ID != id {
-		t.Errorf("ID = %s, want %s", job.ID, id)
-	}
-
-	if len(job.URLs) != len(urls) {
-		t.Errorf("len(URLs) = %d, want %d", len(job.URLs), len(urls))
-	}
-
-	if job.BaseURL != baseURL {
-		t.Errorf("BaseURL = %s, want %s", job.BaseURL, baseURL)
-	}
-
-	if job.Status != LinkCheckPending {
-		t.Errorf("Status = %s, want %s", job.Status, LinkCheckPending)
-	}
-
-	if job.CreatedAt.IsZero() {
-		t.Error("CreatedAt should be set")
-	}
-
-	if job.IsPending() != true {
-		t.Error("new job should be pending")
-	}
+	assert.Equal(t, id, job.ID)
+	assert.Len(t, job.URLs, len(urls))
+	assert.Equal(t, baseURL, job.BaseURL)
+	assert.Equal(t, LinkCheckPending, job.Status)
+	assert.False(t, job.CreatedAt.IsZero())
+	assert.True(t, job.IsPending())
 }
 
 func TestLinkCheckStatusConstants(t *testing.T) {
@@ -262,15 +207,7 @@ func TestLinkCheckStatusConstants(t *testing.T) {
 	// Ensure all statuses are unique
 	seen := make(map[LinkCheckStatus]bool)
 	for _, status := range statuses {
-		if seen[status] {
-			t.Errorf("duplicate LinkCheckStatus: %s", status)
-		}
+		assert.False(t, seen[status], "duplicate LinkCheckStatus: %s", status)
 		seen[status] = true
 	}
-}
-
-// Helper function
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && (s[0:len(substr)] == substr || contains(s[1:], substr))))
 }

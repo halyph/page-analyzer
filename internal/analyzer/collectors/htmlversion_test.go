@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -79,9 +81,7 @@ func TestHTMLVersionCollector(t *testing.T) {
 			// Apply result
 			collector.Apply(result)
 
-			if result.HTMLVersion != tt.wantVersion {
-				t.Errorf("HTMLVersion = %q, want %q", result.HTMLVersion, tt.wantVersion)
-			}
+			assert.Equal(t, tt.wantVersion, result.HTMLVersion)
 		})
 	}
 }
@@ -137,9 +137,7 @@ func TestDetectHTMLVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := detectHTMLVersion(tt.doctype)
-			if got != tt.want {
-				t.Errorf("detectHTMLVersion(%q) = %q, want %q", tt.doctype, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -154,9 +152,7 @@ func TestHTMLVersionCollector_StopsAfterFirst(t *testing.T) {
 		Data: "html",
 	})
 
-	if collector.version != "HTML5" {
-		t.Errorf("first version = %q, want HTML5", collector.version)
-	}
+	assert.Equal(t, "HTML5", collector.version)
 
 	// Try to process another DOCTYPE (shouldn't override)
 	collector.Collect(html.Token{
@@ -164,9 +160,7 @@ func TestHTMLVersionCollector_StopsAfterFirst(t *testing.T) {
 		Data: "HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"",
 	})
 
-	if collector.version != "HTML5" {
-		t.Errorf("version changed to %q, should stay HTML5", collector.version)
-	}
+	assert.Equal(t, "HTML5", collector.version, "version should not change")
 }
 
 func TestHTMLVersionFactory(t *testing.T) {
@@ -174,27 +168,16 @@ func TestHTMLVersionFactory(t *testing.T) {
 
 	// Test Metadata
 	metadata := factory.Metadata()
-	if metadata.Name != "htmlversion" {
-		t.Errorf("Name = %q, want htmlversion", metadata.Name)
-	}
-	if !metadata.Required {
-		t.Error("Expected Required to be true")
-	}
+	assert.Equal(t, "htmlversion", metadata.Name)
+	assert.True(t, metadata.Required)
 
 	// Test Create
 	config := domain.CollectorConfig{}
 	collector, err := factory.Create(config)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("Create() returned nil collector")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	// Verify it's the right type
 	_, ok := collector.(*HTMLVersionCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *HTMLVersionCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *HTMLVersionCollector", collector)
 }

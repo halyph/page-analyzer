@@ -15,32 +15,32 @@ import (
 
 // Service is the main analyzer that orchestrates fetching, parsing, and collecting
 type Service struct {
-	fetcher     *Fetcher
-	walker      *Walker
-	linkChecker LinkChecker   // Optional link checker
-	cache       cache.Cache   // Optional cache
-	htmlTTL     time.Duration // TTL for HTML analysis results
-	logger      *slog.Logger  // Optional logger (nil = no logging)
-	collectors  []string      // List of collectors to run
+	fetcher      *Fetcher
+	walker       *Walker
+	linkChecker  LinkChecker   // Optional link checker
+	cache        cache.Cache   // Optional cache
+	pageCacheTTL time.Duration // TTL for HTML analysis results
+	logger       *slog.Logger  // Optional logger (nil = no logging)
+	collectors   []string      // List of collectors to run
 }
 
 // ServiceConfig configures the analyzer service
 type ServiceConfig struct {
-	Fetcher         config.FetchingConfig
-	Walker          config.ProcessingConfig
-	LinkChecker     *LinkCheckConfig // Optional: config to create new link checker
-	LinkCheckerPool LinkChecker      // Optional: use existing link checker
-	Cache           cache.Cache      // Optional: nil means no caching
-	PageCacheTTL    time.Duration    // TTL for caching HTML analysis results
-	Logger          *slog.Logger     // Optional: logger (nil = no logging)
+	Fetcher          config.FetchingConfig
+	Walker           config.ProcessingConfig
+	WorkerPoolConfig *WorkerPoolConfig // Optional: config to create new link checker
+	LinkChecker      LinkChecker       // Optional: use existing link checker
+	Cache            cache.Cache       // Optional: nil means no caching
+	PageCacheTTL     time.Duration     // TTL for caching HTML analysis results
+	Logger           *slog.Logger      // Optional: logger (nil = no logging)
 }
 
 // NewService creates a new analyzer service
 func NewService(cfg ServiceConfig) *Service {
 	// Set default TTL if not specified
-	htmlTTL := cfg.PageCacheTTL
-	if htmlTTL == 0 {
-		htmlTTL = 1 * time.Hour
+	pageCacheTTL := cfg.PageCacheTTL
+	if pageCacheTTL == 0 {
+		pageCacheTTL = 1 * time.Hour
 	}
 
 	// Set default collectors if not specified
@@ -50,18 +50,18 @@ func NewService(cfg ServiceConfig) *Service {
 	}
 
 	s := &Service{
-		fetcher:    NewFetcher(cfg.Fetcher),
-		walker:     NewWalker(cfg.Walker),
-		htmlTTL:    htmlTTL,
-		logger:     cfg.Logger,
-		collectors: collectors,
+		fetcher:      NewFetcher(cfg.Fetcher),
+		walker:       NewWalker(cfg.Walker),
+		pageCacheTTL: pageCacheTTL,
+		logger:       cfg.Logger,
+		collectors:   collectors,
 	}
 
 	// Optional: use existing link checker pool or create new one
-	if cfg.LinkCheckerPool != nil {
-		s.linkChecker = cfg.LinkCheckerPool
-	} else if cfg.LinkChecker != nil {
-		s.linkChecker = NewLinkCheckWorkerPool(*cfg.LinkChecker)
+	if cfg.LinkChecker != nil {
+		s.linkChecker = cfg.LinkChecker
+	} else if cfg.WorkerPoolConfig != nil {
+		s.linkChecker = NewLinkCheckWorkerPool(*cfg.WorkerPoolConfig)
 		s.linkChecker.Start()
 	}
 
@@ -179,7 +179,7 @@ func (s *Service) fetchAndAnalyze(ctx context.Context, req domain.AnalysisReques
 	cacheCtx, cacheSpan := observability.StartSpan(walkCtx, "cache.SetHTML",
 		observability.AttrCacheOperation.String("set"),
 	)
-	if err := s.cache.SetHTML(cacheCtx, result.URL, result, s.htmlTTL); err != nil {
+	if err := s.cache.SetHTML(cacheCtx, result.URL, result, s.pageCacheTTL); err != nil {
 		observability.RecordError(cacheSpan, err)
 		if s.logger != nil {
 			s.logger.Warn("failed to cache HTML result",

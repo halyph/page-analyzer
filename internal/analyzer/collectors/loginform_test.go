@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -142,9 +144,7 @@ func TestLoginFormCollector(t *testing.T) {
 			// Apply result
 			collector.Apply(result)
 
-			if result.HasLoginForm != tt.wantHasLogin {
-				t.Errorf("HasLoginForm = %v, want %v", result.HasLoginForm, tt.wantHasLogin)
-			}
+			assert.Equal(t, tt.wantHasLogin, result.HasLoginForm)
 		})
 	}
 }
@@ -161,9 +161,7 @@ func TestLoginFormCollector_StopsAfterFound(t *testing.T) {
 	})
 	collector.Collect(html.Token{Type: html.EndTagToken, Data: "form"})
 
-	if !collector.hasLoginForm {
-		t.Error("Should have detected login form")
-	}
+	assert.True(t, collector.hasLoginForm)
 
 	// Reset state flags
 	firstResult := collector.hasLoginForm
@@ -173,9 +171,7 @@ func TestLoginFormCollector_StopsAfterFound(t *testing.T) {
 	collector.Collect(html.Token{Type: html.StartTagToken, Data: "input"})
 
 	// Should still have the same result
-	if collector.hasLoginForm != firstResult {
-		t.Error("Collector should stop processing after finding login form")
-	}
+	assert.Equal(t, firstResult, collector.hasLoginForm, "collector should stop processing after finding login form")
 }
 
 func TestHasPasswordType(t *testing.T) {
@@ -226,9 +222,7 @@ func TestHasPasswordType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := hasPasswordType(tt.attrs)
-			if got != tt.want {
-				t.Errorf("hasPasswordType() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -238,27 +232,16 @@ func TestLoginFormFactory(t *testing.T) {
 
 	// Test Metadata
 	metadata := factory.Metadata()
-	if metadata.Name != "loginform" {
-		t.Errorf("Name = %q, want loginform", metadata.Name)
-	}
-	if !metadata.Required {
-		t.Error("Expected Required to be true")
-	}
+	assert.Equal(t, "loginform", metadata.Name)
+	assert.True(t, metadata.Required)
 
 	// Test Create
 	config := domain.CollectorConfig{}
 	collector, err := factory.Create(config)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("Create() returned nil collector")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	// Verify it's the right type
 	_, ok := collector.(*LoginFormCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *LoginFormCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *LoginFormCollector", collector)
 }

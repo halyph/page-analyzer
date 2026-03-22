@@ -45,9 +45,9 @@ func testServiceConfig() ServiceConfig {
 	}
 }
 
-// testLinkCheckConfig returns a default LinkCheckConfig for tests
-func testLinkCheckConfig() LinkCheckConfig {
-	return LinkCheckConfig{
+// testWorkerPoolConfig returns a default WorkerPoolConfig for tests
+func testWorkerPoolConfig() WorkerPoolConfig {
+	return WorkerPoolConfig{
 		Workers:    20,
 		QueueSize:  100,
 		Timeout:    5 * time.Second,

@@ -197,6 +197,21 @@ components:
           maximum: 10000
           default: 10000
           description: Maximum number of links to check
+        sync_check_limit:
+          type: integer
+          minimum: 0
+          default: 10
+          description: Maximum number of links to check synchronously before switching to async
+        timeout:
+          type: string
+          pattern: '^\d+[smh]$'
+          default: "30s"
+          description: Timeout for synchronous link checking (e.g. "30s", "1m", "2h")
+          example: "30s"
+        allow_stale:
+          type: boolean
+          default: true
+          description: Allow serving stale cached results when fresh data is unavailable
 
     AnalysisResponse:
       type: object
@@ -351,6 +366,10 @@ components:
         git_commit:
           type: string
           example: "abc123"
+        uptime:
+          type: string
+          description: Server uptime duration
+          example: "2h15m30s"
 
     ErrorResponse:
       type: object
@@ -358,6 +377,9 @@ components:
         error:
           type: string
           description: Error message
+        message:
+          type: string
+          description: Additional context or details about the error
         code:
           type: integer
           description: HTTP status code

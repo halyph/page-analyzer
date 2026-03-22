@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -90,9 +92,7 @@ func TestHeadingsCollector(t *testing.T) {
 			// Apply result
 			collector.Apply(result)
 
-			if result.Headings != tt.wantHeadings {
-				t.Errorf("Headings = %+v, want %+v", result.Headings, tt.wantHeadings)
-			}
+			assert.Equal(t, tt.wantHeadings, result.Headings)
 		})
 	}
 }
@@ -112,9 +112,7 @@ func TestHeadingsCollector_IgnoresEndTags(t *testing.T) {
 		Data: "h1",
 	})
 
-	if collector.counts.H1 != 1 {
-		t.Errorf("H1 count = %d, want 1", collector.counts.H1)
-	}
+	assert.Equal(t, 1, collector.counts.H1)
 }
 
 func TestHeadingsCollector_IgnoresTextTokens(t *testing.T) {
@@ -126,9 +124,7 @@ func TestHeadingsCollector_IgnoresTextTokens(t *testing.T) {
 		Data: "h1",
 	})
 
-	if collector.counts.H1 != 0 {
-		t.Errorf("H1 count = %d, want 0", collector.counts.H1)
-	}
+	assert.Equal(t, 0, collector.counts.H1)
 }
 
 func TestHeadingsCollector_IgnoresNonHeadings(t *testing.T) {
@@ -145,9 +141,7 @@ func TestHeadingsCollector_IgnoresNonHeadings(t *testing.T) {
 	}
 
 	// All counts should be zero
-	if collector.counts.Total() != 0 {
-		t.Errorf("Total headings = %d, want 0", collector.counts.Total())
-	}
+	assert.Equal(t, 0, collector.counts.Total())
 }
 
 func TestHeadingsCollector_LargeCount(t *testing.T) {
@@ -161,9 +155,7 @@ func TestHeadingsCollector_LargeCount(t *testing.T) {
 		})
 	}
 
-	if collector.counts.H2 != 100 {
-		t.Errorf("H2 count = %d, want 100", collector.counts.H2)
-	}
+	assert.Equal(t, 100, collector.counts.H2)
 }
 
 func TestHeadingsFactory(t *testing.T) {
@@ -171,27 +163,16 @@ func TestHeadingsFactory(t *testing.T) {
 
 	// Test Metadata
 	metadata := factory.Metadata()
-	if metadata.Name != "headings" {
-		t.Errorf("Name = %q, want headings", metadata.Name)
-	}
-	if !metadata.Required {
-		t.Error("Expected Required to be true")
-	}
+	assert.Equal(t, "headings", metadata.Name)
+	assert.True(t, metadata.Required)
 
 	// Test Create
 	config := domain.CollectorConfig{}
 	collector, err := factory.Create(config)
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-
-	if collector == nil {
-		t.Fatal("Create() returned nil collector")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, collector)
 
 	// Verify it's the right type
 	_, ok := collector.(*HeadingsCollector)
-	if !ok {
-		t.Errorf("collector type = %T, want *HeadingsCollector", collector)
-	}
+	assert.True(t, ok, "collector type = %T, want *HeadingsCollector", collector)
 }
