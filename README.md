@@ -2,6 +2,8 @@
 
 High-performance web page analyzer that extracts HTML metadata, analyzes structure, and verifies link accessibility.
 
+Useful for SEO audits, site monitoring, content analysis, and quality assurance. Analyzes any webpage to extract structured data and verify link health.
+
 ## Features
 
 - **HTML Analysis**: Version detection, title, headings (H1-H6), login forms
@@ -16,6 +18,12 @@ High-performance web page analyzer that extracts HTML metadata, analyzes structu
 
 ```bash
 make build
+# Binary is at: build/<os>/<arch>/analyzer
+# Examples:
+#   macOS ARM:   ./build/darwin/arm64/analyzer
+#   macOS Intel: ./build/darwin/amd64/analyzer
+#   Linux x64:   ./build/linux/amd64/analyzer
+
 ./build/darwin/arm64/analyzer analyze https://go.dev
 ```
 
@@ -23,6 +31,7 @@ make build
 
 ```bash
 make build
+# Adjust binary path for your OS/arch (see above)
 ./build/darwin/arm64/analyzer serve
 # Open http://localhost:8080
 ```
@@ -99,6 +108,7 @@ done
 View traces in Jaeger and metrics in Grafana.
 
 **Commands:**
+
 ```bash
 make demo-status  # Service status
 make demo-logs    # Follow logs
@@ -123,19 +133,15 @@ Configure via environment variables. Key settings:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANALYZER_ADDR` | `:8080` | Server address |
-| `ANALYZER_FETCH_TIMEOUT` | `15s` | Page fetch timeout |
-| `ANALYZER_CHECK_MODE` | `async` | `sync\|async\|hybrid\|disabled` |
-| `ANALYZER_CHECK_WORKERS` | `20` | Link check workers |
-| `ANALYZER_MAX_LINKS` | `10000` | Max links per page |
-| `ANALYZER_CACHE_MODE` | `memory` | `memory\|redis\|multi\|disabled` |
-| `ANALYZER_REDIS_ADDR` | `localhost:6379` | Redis connection |
-| `ANALYZER_CACHE_TTL` | `1h` | Cache TTL |
-| `ANALYZER_LOG_LEVEL` | `info` | Log level |
-| `ANALYZER_TRACING_ENABLED` | `false` | Enable tracing |
-| `ANALYZER_OTEL_ENDPOINT` | `localhost:4318` | OTLP endpoint |
-| `ANALYZER_METRICS_ENABLED` | `false` | Enable metrics |
+| `ANALYZER_CHECK_MODE` | `async` | Link checking: `sync\|async\|hybrid\|disabled` |
+| `ANALYZER_CACHE_MODE` | `memory` | Cache: `memory\|redis\|multi\|disabled` |
+| `ANALYZER_REDIS_ADDR` | `localhost:6379` | Redis connection (if cache=redis) |
+| `ANALYZER_LOG_LEVEL` | `info` | Log level: `debug\|info\|warn\|error` |
+| `ANALYZER_TRACING_ENABLED` | `false` | Enable OpenTelemetry tracing |
 
-See [docs/DECISIONS.md](docs/DECISIONS.md) for design decisions and architecture details.
+See `internal/config/config.go` for complete configuration options including timeouts, worker pools, and cache TTLs.
+
+Additional docs: [Design Decisions](docs/DECISIONS.md) | [Known Issues](docs/ISSUES.md) | [Architecture](docs/DIAGRAMS.md)
 
 ## Development
 
@@ -149,15 +155,10 @@ make cover     # Coverage report
 ## Project Structure
 
 ```
-cmd/analyzer/          # CLI entry point
-internal/
-  ├── domain/          # Core types
-  ├── analyzer/        # Analysis engine
-  ├── cache/           # LRU + Redis
-  ├── presentation/    # CLI, REST, Web
-  ├── server/          # HTTP server
-  └── observability/   # Logging, metrics, tracing
-deployments/           # Docker, Grafana, Prometheus
+cmd/analyzer/      # CLI entry point
+internal/          # Core logic (domain, analyzer, cache, server, observability)
+deployments/       # Grafana, Prometheus configs
+docs/              # Design decisions, issues, diagrams
 ```
 
 ## License
