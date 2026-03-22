@@ -84,7 +84,7 @@ func TestHandleAnalyze_TrimURL(t *testing.T) {
 
 			// Create handler
 			logger := slog.Default()
-			handler := NewHandler(mockAnalyzer, nil, logger, "test", "test")
+			handler := NewHandler(mockAnalyzer, nil, nil, logger, "test", "test")
 
 			// Create request
 			reqBody := AnalyzeRequest{
@@ -137,7 +137,7 @@ func TestHandleAnalyze_EmptyURL(t *testing.T) {
 
 			// Create handler
 			logger := slog.Default()
-			handler := NewHandler(mockAnalyzer, nil, logger, "test", "test")
+			handler := NewHandler(mockAnalyzer, nil, nil, logger, "test", "test")
 
 			// Create request
 			reqBody := AnalyzeRequest{

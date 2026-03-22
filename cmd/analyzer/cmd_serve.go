@@ -11,6 +11,7 @@ import (
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/cache"
 	"github.com/halyph/page-analyzer/internal/config"
+	"github.com/halyph/page-analyzer/internal/observability"
 	"github.com/halyph/page-analyzer/internal/presentation/rest"
 	"github.com/halyph/page-analyzer/internal/presentation/web"
 	"github.com/halyph/page-analyzer/internal/server"
@@ -60,6 +61,39 @@ func runServe(c *cli.Context) error {
 		"link_check_mode", cfg.LinkChecking.CheckMode,
 	)
 
+	// Initialize OpenTelemetry
+	ctx := context.Background()
+	otelShutdown, err := observability.InitOTEL(ctx, observability.OTELConfig{
+		ServiceName:    "page-analyzer",
+		ServiceVersion: Version,
+		Endpoint:       cfg.Observability.OTELEndpoint,
+		Enabled:        cfg.Observability.OTELEnabled,
+		Logger:         logger,
+	})
+	if err != nil {
+		logger.Error("failed to initialize OpenTelemetry", "error", err)
+		// Continue without OTEL rather than failing
+	}
+	defer func() {
+		if otelShutdown != nil {
+			if err := otelShutdown(context.Background()); err != nil {
+				logger.Error("failed to shutdown OpenTelemetry", "error", err)
+			}
+		}
+	}()
+
+	// Initialize metrics
+	var metrics *observability.Metrics
+	if cfg.Observability.MetricsEnabled {
+		metrics, err = observability.NewMetrics()
+		if err != nil {
+			logger.Error("failed to initialize metrics", "error", err)
+			// Continue without metrics
+		} else {
+			logger.Info("metrics initialized")
+		}
+	}
+
 	// Create dependencies
 	cacheImpl := createCache(cfg, logger)
 	defer cacheImpl.Close()
@@ -68,15 +102,18 @@ func runServe(c *cli.Context) error {
 	analyzerService := createService(cfg, cacheImpl, linkChecker, logger)
 	defer analyzerService.Stop()
 
+	// Create health checker
+	healthChecker := observability.NewHealthChecker(cacheImpl)
+
 	// Create HTTP handlers
-	restHandler := rest.NewHandler(analyzerService, linkChecker, logger, Version, GitHead)
+	restHandler := rest.NewHandler(analyzerService, linkChecker, healthChecker, logger, Version, GitHead)
 	webHandler, err := web.NewHandler(analyzerService, logger, Version, GitHead)
 	if err != nil {
 		return fmt.Errorf("failed to create web handler: %w", err)
 	}
 
 	// Create and start server
-	srv := createServer(cfg, restHandler, webHandler, logger)
+	srv := createServer(cfg, restHandler, webHandler, metrics, logger)
 
 	return runServerWithGracefulShutdown(srv, cfg, logger)
 }
@@ -164,8 +201,8 @@ func createService(cfg config.Config, cacheImpl cache.Cache, linkChecker *analyz
 	return analyzer.NewService(serviceCfg)
 }
 
-func createServer(cfg config.Config, restHandler *rest.Handler, webHandler *web.Handler, logger *slog.Logger) *server.Server {
-	router := server.NewRouter(restHandler, webHandler, logger)
+func createServer(cfg config.Config, restHandler *rest.Handler, webHandler *web.Handler, metrics *observability.Metrics, logger *slog.Logger) *server.Server {
+	router := server.NewRouter(restHandler, webHandler, metrics, logger)
 
 	serverCfg := server.Config{
 		Addr:         cfg.Server.Addr,

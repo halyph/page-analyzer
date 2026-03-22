@@ -7,29 +7,32 @@ import (
 
 	"github.com/halyph/page-analyzer/internal/analyzer"
 	"github.com/halyph/page-analyzer/internal/domain"
+	"github.com/halyph/page-analyzer/internal/observability"
 )
 
 // Handler holds dependencies for REST handlers
 type Handler struct {
-	analyzer    domain.Analyzer
-	linkChecker *analyzer.LinkCheckWorkerPool
-	logger      *slog.Logger
-	version     string
-	gitCommit   string
+	analyzer      domain.Analyzer
+	linkChecker   *analyzer.LinkCheckWorkerPool
+	healthChecker *observability.HealthChecker
+	logger        *slog.Logger
+	version       string
+	gitCommit     string
 }
 
 // NewHandler creates a new REST API handler
-func NewHandler(analyzer domain.Analyzer, linkChecker *analyzer.LinkCheckWorkerPool, logger *slog.Logger, version, gitCommit string) *Handler {
+func NewHandler(analyzer domain.Analyzer, linkChecker *analyzer.LinkCheckWorkerPool, healthChecker *observability.HealthChecker, logger *slog.Logger, version, gitCommit string) *Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 
 	return &Handler{
-		analyzer:    analyzer,
-		linkChecker: linkChecker,
-		logger:      logger,
-		version:     version,
-		gitCommit:   gitCommit,
+		analyzer:      analyzer,
+		linkChecker:   linkChecker,
+		healthChecker: healthChecker,
+		logger:        logger,
+		version:       version,
+		gitCommit:     gitCommit,
 	}
 }
 

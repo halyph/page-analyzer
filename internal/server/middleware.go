@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/halyph/page-analyzer/internal/observability"
 )
 
 // Logger middleware logs HTTP requests
@@ -76,4 +78,45 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// RequestID middleware adds a request ID to each request context
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := observability.GenerateRequestID()
+		ctx := observability.ContextWithRequestID(r.Context(), requestID)
+
+		// Add request ID to response header for tracing
+		w.Header().Set("X-Request-ID", requestID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Metrics middleware records HTTP metrics
+func Metrics(metrics *observability.Metrics) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if metrics == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			ctx := r.Context()
+			start := time.Now()
+
+			// Increment active requests
+			metrics.IncActiveRequests(ctx)
+			defer metrics.DecActiveRequests(ctx)
+
+			// Wrap ResponseWriter to capture status code
+			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+			next.ServeHTTP(wrapped, r)
+
+			// Record metrics
+			duration := time.Since(start).Seconds()
+			metrics.RecordHTTPRequest(ctx, r.URL.Path, wrapped.statusCode, duration)
+		})
+	}
 }

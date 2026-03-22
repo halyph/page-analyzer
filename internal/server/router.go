@@ -5,18 +5,25 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/halyph/page-analyzer/internal/observability"
 	"github.com/halyph/page-analyzer/internal/presentation/rest"
 	"github.com/halyph/page-analyzer/internal/presentation/web"
 )
 
 // NewRouter creates a new HTTP router with all routes configured
-func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, logger *slog.Logger) *chi.Mux {
+func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, metrics *observability.Metrics, logger *slog.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
-	// Middleware
+	// Middleware (order matters!)
 	r.Use(Recovery(logger))
-	r.Use(Logger(logger))
+	r.Use(RequestID)      // Add request ID to context
+	r.Use(Logger(logger)) // Log with request ID
 	r.Use(CORS)
+
+	// Add metrics middleware if enabled
+	if metrics != nil {
+		r.Use(Metrics(metrics))
+	}
 
 	// Web UI routes
 	r.Get("/", webHandler.HandleIndex)
@@ -27,8 +34,10 @@ func NewRouter(restHandler *rest.Handler, webHandler *web.Handler, logger *slog.
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
-		// Health check
+		// Health checks
 		r.Get("/health", restHandler.HandleHealth)
+		r.Get("/health/live", restHandler.HandleHealthLive)
+		r.Get("/health/ready", restHandler.HandleHealthReady)
 
 		// Analysis
 		r.Post("/analyze", restHandler.HandleAnalyze)
